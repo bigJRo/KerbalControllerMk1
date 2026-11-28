@@ -1,7 +1,7 @@
 /**
  * @file        K7SC_I2C.h
- * @version     2.0.0
- * @date        2026-04-27
+ * @version     2.1.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -36,6 +36,14 @@
  *        Called internally by k7scBegin().
  */
 void k7scI2CBegin(uint8_t i2cAddress, uint8_t typeId, uint8_t capFlags);
+
+/**
+ * @brief Set the module sketch's own version, reported at identity bytes
+ *        5..7 next to the library version (I2C spec §6). Call in setup()
+ *        before k7scBegin(), from the sketch's SKETCH_VERSION_* constants.
+ *        Until it is called those bytes read KMC_SKETCH_VERSION_UNKNOWN.
+ */
+void k7scSetSketchVersion(uint8_t major, uint8_t minor, uint8_t patch);
 
 /**
  * @brief Queue a packet for transmission to master and assert INT.

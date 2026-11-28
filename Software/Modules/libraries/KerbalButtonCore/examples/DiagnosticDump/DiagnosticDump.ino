@@ -1,7 +1,7 @@
 /**
  * @file        DiagnosticDump.ino
- * @version     2.0.0
- * @date        2026-04-07
+ * @version     2.1.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -34,7 +34,7 @@
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html
  *
- * @note        Requires: KerbalButtonCore library
+ * @note        Requires: KerbalButtonCore library v2.5.0 or later
  *              Hardware: KC-01-1801/1802 and KC-01-1811/1812 (ATtiny816)
  *              IDE settings:
  *                Board: ATtiny816 (megaTinyCore)
@@ -52,6 +52,13 @@
 #define I2C_ADDRESS         0x20
 #define MODULE_TYPE_ID      KBC_TYPE_UI_CONTROL
 #define SERIAL_BAUD         115200
+
+/** @brief This sketch's own version, MAJOR.MINOR.PATCH, reported at identity
+ *         bytes 5..7 next to the KerbalButtonCore version (I2C spec §6). Keep
+ *         @version in step with it. */
+#define SKETCH_VERSION_MAJOR  2
+#define SKETCH_VERSION_MINOR  1
+#define SKETCH_VERSION_PATCH  0
 
 /** @brief Interval between full state dumps in milliseconds. */
 #define DUMP_INTERVAL_MS    2000
@@ -185,15 +192,26 @@ void setup() {
 
     Serial.println(F("\nKerbalButtonCore Diagnostic"));
     Serial.println(F("============================"));
-    Serial.print(F("Firmware: "));
+    Serial.print(F("Library: "));
     Serial.print(KBC_FIRMWARE_MAJOR);
     Serial.print(F("."));
-    Serial.println(KBC_FIRMWARE_MINOR);
+    Serial.print(KBC_FIRMWARE_MINOR);
+    Serial.print(F("."));
+    Serial.println(KBC_FIRMWARE_PATCH);
+    Serial.print(F("Sketch:  "));
+    Serial.print(SKETCH_VERSION_MAJOR);
+    Serial.print(F("."));
+    Serial.print(SKETCH_VERSION_MINOR);
+    Serial.print(F("."));
+    Serial.println(SKETCH_VERSION_PATCH);
     Serial.print(F("I2C Address: 0x"));
     Serial.println(I2C_ADDRESS, HEX);
     Serial.print(F("Button count: "));
     Serial.println(KBC_BUTTON_COUNT);
     Serial.println();
+
+    // Report this sketch's version in the identity, next to the library's.
+    kbc.setSketchVersion(SKETCH_VERSION_MAJOR, SKETCH_VERSION_MINOR, SKETCH_VERSION_PATCH);
 
     Wire.begin(I2C_ADDRESS);
     kbc.begin();

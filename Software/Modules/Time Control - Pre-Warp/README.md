@@ -1,12 +1,12 @@
 # KCMk1_PreWarp_Time
 
 **Module:** Pre-Warp Time  
-**Version:** 2.1.0  
-**Date:** 2026-04-28  
+**Version:** 2.2.0  
+**Date:** 2026-11-26  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1841 v2.0 (ATtiny816)  
-**Library:** Kerbal7SegmentCore v2.0.0  
+**Library:** Kerbal7SegmentCore v2.1.0 or later  
 
 ---
 
@@ -23,6 +23,7 @@ The Pre-Warp Time module allows the pilot to set a pre-warp duration in minutes 
 | I2C Address | `0x2B` |
 | Module Type ID | `KMC_TYPE_PRE_WARP_TIME` (0x0C) |
 | Capability Flags | `KMC_CAP_DISPLAY` (0x10) |
+| Identity | 8 bytes (I2C spec §6): the Kerbal7SegmentCore version, 2.1.0, at bytes 1/2/4 and this sketch's own version, 2.2.0, at bytes 5–7 (`SKETCH_VERSION_*` in the sketch, passed with `k7scSetSketchVersion()`) |
 | Data Packet Size | 8 bytes (3-byte header + 5-byte payload) |
 | NeoPixel Buttons | 3 (SK6812MINI-EA, NEO_GRB 3-byte) |
 | GPIO Buttons | 1 (BTN_EN — encoder pushbutton, no LED) |
@@ -145,7 +146,7 @@ No action. State persists across vessel switches — pilot configures as needed.
 
 1. Arduino IDE with megaTinyCore installed
 2. KerbalModuleCommon v1.7.1+ (header-only; Sketch → Include Library → Add .ZIP)
-3. Kerbal7SegmentCore v2.0.0 (Sketch → Include Library → Add .ZIP)
+3. Kerbal7SegmentCore v2.1.0 (Sketch → Include Library → Add .ZIP)
 
 ### Arduino IDE Settings
 
@@ -172,6 +173,7 @@ After flashing: display shows `0`, all three buttons backlit dim warm. Press BTN
 
 | Version | Date | Notes |
 |---|---|---|
+| 2.2.0 | 2026-11-26 | The identity reports this sketch's own version, 2.2.0, at bytes 5–7 next to the Kerbal7SegmentCore version (I2C spec v2.22 §6), so a change to the sketch alone can be seen from the bus: `SKETCH_VERSION_*` constants added, passed to the library with `k7scSetSketchVersion()` in `setup()`. Needs Kerbal7SegmentCore 2.1.0 and KerbalModuleCommon 1.9.0. |
 | 2.1.0 | 2026-10-31 | BTN03 preset 1440 → 360 min: one Kerbin day (6 h), not an Earth day. |
 | 2.0.0 | 2026-04-28 | Rewritten for Kerbal7SegmentCore v2.0.0. All application logic in sketch. Click-count encoder acceleration. Universal 3-byte packet header. Pin assignments corrected to match KC-01-1880 v2.0 hardware. Clock corrected to 20 MHz. |
 | 1.0 | 2026-04-08 | Initial release |

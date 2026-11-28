@@ -1,12 +1,12 @@
 # KCMk1_Vehicle_Control
 
 **Module:** Vehicle Control  
-**Version:** 2.2  
-**Date:** 2026-06-28  
+**Version:** 2.3  
+**Date:** 2026-11-26  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1812 Wide Button Module Base v1.1  
-**Library:** KerbalButtonCore v2.0.0 (24-input)  
+**Library:** KerbalButtonCore v2.5.0 or later (24-input)  
 
 ---
 
@@ -27,6 +27,7 @@ This module declares `KBC_CAP_EXTENDED_STATES`. On the state-machine buttons (B8
 | I2C Address | `0x24` |
 | Module Type ID | `0x05` (KBC_TYPE_VEHICLE_CONTROL) |
 | Capability Flags | `0x01` (KBC_CAP_EXTENDED_STATES) |
+| Identity | 8 bytes (I2C spec §6): the KerbalButtonCore version, 2.5.1, at bytes 1/2/4 and this sketch's own version, 2.3.0, at bytes 5–7 (`SKETCH_VERSION_*` in the sketch, passed with `kbc.setSketchVersion()`) |
 | Extended States | Yes — state-machine buttons B8 / B10 / B11 |
 | NeoPixel Buttons | 12 (KBC indices 0-11) |
 | Switch Group 2 inputs | 8 (KBC indices 16–23, discrete, no LED) |
@@ -209,3 +210,4 @@ LED state nibble values for the state-machine buttons (B8 / B10 / B11):
 | 2.0 | 2026-06-28 | Updated to KerbalButtonCore v2.0 (I2C protocol v2.6): old B12–B15 discrete inputs removed; Switch Group 2 added at KBC indices 16–23 via the 24-input / 3-byte shift-register variant. Packet is now 9 bytes (3-byte header + 6-byte payload); module powers on dark until CMD_ENABLE. PCB designator corrected to KC-01-1812. |
 | 2.1 | 2026-06-28 | B0–B11 layout reconciled to Module UI Reference v5.4 (canonical): B2 Antenna, B4 Fuel Cell, B5 Solar Array, B6 Cargo Door; B8 is now Heat Shield and B10/B11 are single-button Main/Drogue Chute state machines (deploy → cut/release) replacing the former separate deploy/cut buttons; B9 is Ladder. Heat shield and parachutes use extended LED states sequenced controller-side. |
 | 2.2 | 2026-06-28 | State machines now render the canonical static-red cut/release terminal via the new `KBC_LED_CUT` state (nibble 0x7, KerbalButtonCore v2.1 / KerbalModuleCommon v1.4); deploy = static GREEN, cut/release = static RED. Removed the prior controller-side-only rendering limitation. |
+| 2.3 | 2026-11-26 | The identity reports this sketch's own version, 2.3.0, at bytes 5–7 next to the KerbalButtonCore version (I2C spec v2.22 §6), so a change to the sketch alone can be seen from the bus: `SKETCH_VERSION_*` constants added, passed to the library with `kbc.setSketchVersion()` in `setup()`. The sketch header had stayed at 2.0.0 through 2.1 and 2.2 here; 2.3.0 is above both. Needs KerbalButtonCore 2.5.0 and KerbalModuleCommon 1.9.0. |

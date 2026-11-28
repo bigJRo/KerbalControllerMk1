@@ -19,7 +19,7 @@
 | Button Module | KC-01-1801 | KC-01-1802 | V2.1 | 12 RGB buttons + 4 panel inputs |
 | Wide Button Module | KC-01-1811 | KC-01-1812 | V2.1 | 12 RGB buttons + 8 panel inputs |
 | Throttle Module | KC-01-1871 | KC-01-1872 | V2.1 | Motorised fader, touch sensor, 5 illuminated panel inputs |
-| Joystick Module | KC-01-1831 | KC-01-1832 | V2.1 | 3-axis stick + stick button (terminal), 2 RGB buttons |
+| Joystick Module | KC-01-1831 | KC-01-1832 | V2.1 | Stick (SaiDian JH-D400X-R4, 4-axis, three axes used) + stick button (terminal), 2 RGB buttons |
 | 7-Segment Display Module | KC-01-1841 | KC-01-1842 | V2.1 | 4-digit display, encoder with push, 3 RGB buttons |
 | 2" TFT Display Driver | KC-01-1901 | KC-01-1902 | V2.0 | XIAO RP2350, 2" 240×320 ST7789 IPS, microSD |
 | Dual Encoder | KC-01-1861 | KC-01-1862 | V2.1 | Two encoders on the board |
@@ -234,7 +234,7 @@ V2.1 adds the 200 kΩ PCA9306 VREF2/EN pull-up (R19) with C2 (100 pF) on that no
 | B18 | U16-4 | SCE | NORM / AUX | Latching | Demo mode off / on |
 | B19 | U16-3 | UPTLM | INHIB / XMIT | Latching | Debug telemetry |
 | B20 | U17-4 | LTG | NORM / TEST | Momentary | Bulb test |
-| B21 | U17-3 | A/P | INHIB / ARM | Latching | Autopilot master arm (§8) |
+| B21 | U17-3 | A/P | INHIB / ENAB | Latching | Autopilot master arm (§8) |
 | B22 | U17-2 | ENGINE | SAFE / ARM | Latching | Throttle interlock (§8). Renamed from THROTTLE INOP / ACT |
 | B23 | U17-1 | THRTL | STD / FINE | Latching | Throttle precision |
 
@@ -308,12 +308,12 @@ These go into the firmware design once the panel review is finished.
 - **Annunciator:** ENG ARM shows the switch.
 - **Hardware note:** the Throttle Module refuses lever commands while disabled or touched, so the module stays enabled in SAFE and the master re-sends the 0 % target until the lever reports it.
 
-### 8.2 A/P INHIB / ARM (Switch Group 1, B21)
+### 8.2 A/P INHIB / ENAB (Switch Group 1, B21)
 
 - **INHIB:** no autopilot can engage; moving the switch to INHIB disconnects every engaged autopilot (reason A/P INHIB).
-- **ARM:** autopilots can be engaged from the consoles as before.
+- **ENAB:** autopilots can be engaged from the consoles as before. (Called ARM until 2026-11-25; renamed so it does not repeat ENGINE SAFE / ARM beside it.)
 - **Annunciator:** two lights, both in mode row 0.
-  - **A/P ARM** shows the switch: lit on ARM, dark on INHIB. It replaces THRTL ENA, keeping the same mode-flag bit (bit 3), so only the tile label changes in the Annunciator firmware, along with its references and the user manual.
+  - **A/P ENAB** shows the switch: lit on ENAB, dark on INHIB. It replaces THRTL ENA, keeping the same mode-flag bit (bit 3), so only the tile label changes in the Annunciator firmware, along with its references and the user manual.
   - **AUTOPILOT** (unchanged) is lit while any autopilot or HOLD is engaged.
 
 ### 8.3 Autopilots and the physical lever
@@ -347,7 +347,7 @@ One gap, found in the module firmware: **in precision (FINE) mode the lever posi
 
 ### 8.7 HOLD (Stability B10)
 
-HOLD is a temporary hold of the current condition. It is *not* gated by A/P ARM, and A/P INHIB does not drop it.
+HOLD is a temporary hold of the current condition. It is *not* gated by A/P ENAB, and A/P INHIB does not drop it.
 
 | Control mode | Holds | How |
 |---|---|---|
@@ -406,7 +406,7 @@ The candidates considered for B10 were: HOLD, controller pointing layer, kill ro
 | 5 | KSP link | Connect / disconnect, scene and vessel changes |
 | 6 | Autopilots | Engage / disengage with the reason; HOLD |
 | 7 | INT traffic | Each INT received and the packet that followed (decoded) |
-| 8 | Master state | Every change of a state / config variable (control mode, control group, precision, audio, demo, A/P ARM, ENGINE ARM, trim, …) |
+| 8 | Master state | Every change of a state / config variable (control mode, control group, precision, audio, demo, A/P ENAB, ENGINE ARM, trim, …) |
 | 9 | Timing | Loop time (average / worst per second) |
 | 10–17 | Additions | Below |
 
@@ -825,7 +825,7 @@ Collected from this review; each is a separate piece of work.
 | 14 | Info Display 1 firmware + I2C spec | Input test screen, its two-finger gesture and its frame (§8.11). **Done** (InfoDisp v1.18.0, master v0.9.0, I2C spec v2.20, 2026-10-31): three frames, sync 0xAB (inputs, modules, displays), while the display reports screen 18 |
 | 15 | Throttle Module firmware | Hold the lever at the autopilot's position against the pilot, with a stall limit (§8.10). **Done** (v2.2, 2026-10-31): new `CMD_SET_LEVER_HOLD` (0x0E), at most 0.5 s per touch, back to the target on release; the same limit now applies to DISABLED's resist at 0 |
 | 16 | ~~Annunciator, Info Display, Resource Display firmware~~ | ~~Report their own Simpit link state~~: not needed, every display already reports it (status flags bit 0) |
-| 17 | Sys Info Display firmware | **Built:** `Software/Displays/KCMk1_SysInfo` v1.0.0 — boot, status and SWITCH ERR screens, icons built in, optional splash on the card (§8.12, `Sys_Info_Display_Design.md`) |
+| 17 | Sys Info Display firmware | **Built:** `Software/Displays/KCMk1_SysInfo` v1.0.0 (now v1.1.0, item 22) — boot, status and SWITCH ERR screens, icons built in, optional splash on the card (§8.12, `Sys_Info_Display_Design.md`) |
 | 18 | Autopilot design docs | Retire the pilot-input disconnect rule (§8.10) |
 | 19 | Button, joystick and throttle module firmware | `CMD_BULB_TEST` per the I2C spec: start / stop, no timeout, not blocking (was a fixed 2 s `delay()` inside the I2C handler, found while building stage 3 of the master). **Done** (KerbalButtonCore 2.3, KerbalJoystickCore 2.1, Throttle 2.2, 2026-10-31) |
 | 10 | Info Display firmware | Demo follows the master's flag only: stop clearing it on a scene change (§8.8). **Done** (v1.18.0, 2026-10-31) |
@@ -833,4 +833,5 @@ Collected from this review; each is a separate piece of work.
 | 12 | Annunciator firmware | Check its demo handling against the same rule (§8.8). **Done** (v3.10.0, 2026-10-31): Simpit serviced in demo; audio, GPWS and display state reset on leaving it |
 | 20 | Throttle Module firmware | Stop acting on its own buttons: it drove the lever to 100 % / 0 % and stepped it ±5 %, even in ENGINE SAFE, in FINE and under an autopilot. The master owns the lever (§10, Module UI Reference §12.2). Found for Module UI Reference v6.0. **Done** (v2.1, 2026-10-27) |
 | 21 | Info Display firmware + I2C spec | AIRBRK follows the control group: the master sends the group in byte 8 of the summary frame (now 9 bytes) and the display offsets `AIRBRAKE_CAG` like the button. **Done** (InfoDisp v1.17, master v0.8.1, I2C spec v2.18, 2026-10-27) |
+| 22 | Module libraries and sketches, Sys Info Display firmware + I2C spec | Every firmware version on the bus three-place, X.Y.Z. **Done** (I2C spec v2.22, 2026-11-26): the module identity is 8 bytes, the library patch at byte 4 and the module sketch's own version at bytes 5–7, so a change to a sketch alone shows on the bus; the modules report KerbalButtonCore 2.5.0, KerbalJoystickCore 2.4.0, Kerbal7SegmentCore 2.1.0 (it reported 1.0), each with its sketch's version (every library module sketch bumped a minor), and Throttle 2.5.0 and Dual Encoder 2.4.0 in both places (KerbalModuleCommon 1.9.0). Master v0.10.5 reads it and shows both versions, `2.1.0 / lib 2.5.0` (the 5- and 4-byte forms accepted: sketch version shown -, a missing patch X.Y) and sends its own patch in Sys Info STATUS byte 27; Sys Info v1.1.0 answers a 5-byte status read |
 

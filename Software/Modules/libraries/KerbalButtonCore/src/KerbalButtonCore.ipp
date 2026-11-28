@@ -1,7 +1,7 @@
 /**
  * @file        KerbalButtonCore.ipp
- * @version     2.4.0
- * @date        2026-04-07
+ * @version     2.5.1
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -35,6 +35,14 @@ KerbalButtonCore::KerbalButtonCore(uint8_t         moduleTypeId,
     , _lastPollTime(0)
     , _lastSleepPollTime(0)
 {
+}
+
+// ============================================================
+//  setSketchVersion()
+// ============================================================
+
+void KerbalButtonCore::setSketchVersion(uint8_t major, uint8_t minor, uint8_t patch) {
+    _i2c.setSketchVersion(major, minor, patch);
 }
 
 // ============================================================

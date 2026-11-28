@@ -1,6 +1,6 @@
 /**
  * @file        KCMk1TesterCore.h
- * @version     1.0.0
+ * @version     1.1.1
  * @project     Kerbal Controller Mk1 — Module Tester per-module sketches
  * @author      J. Rostoker
  * @organization Jeb's Controller Works

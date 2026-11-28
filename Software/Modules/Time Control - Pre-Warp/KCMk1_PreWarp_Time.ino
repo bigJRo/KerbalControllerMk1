@@ -1,7 +1,7 @@
 /**
  * @file        KCMk1_PreWarp_Time.ino
- * @version     2.1.0
- * @date        2026-10-31
+ * @version     2.2.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -55,7 +55,7 @@
  *              https://www.gnu.org/licenses/gpl-3.0.html
  *
  * @note        Hardware:  KC-01-1841 v2.0 (ATtiny816)
- *              Library:   Kerbal7SegmentCore v2.0.0
+ *              Library:   Kerbal7SegmentCore v2.1.0 or later (the identity carries this sketch's version)
  *              IDE settings:
  *                Board:        ATtiny816 (megaTinyCore)
  *                Clock:        20 MHz internal
@@ -67,6 +67,15 @@
 
 // ── Module identity ───────────────────────────────────────────
 #define I2C_ADDRESS     0x2B
+
+/** @brief This sketch's own version, MAJOR.MINOR.PATCH: the single source of
+ *         the sketch version reported at identity bytes 5..7 (I2C spec §6),
+ *         next to the Kerbal7SegmentCore version at bytes 1/2/4. Keep @version
+ *         and the README in step with it. */
+#define SKETCH_VERSION_MAJOR  2
+#define SKETCH_VERSION_MINOR  2
+#define SKETCH_VERSION_PATCH  0
+
 #define DEFAULT_VALUE   0
 
 // ── Preset values (minutes) ───────────────────────────────────
@@ -110,6 +119,9 @@ static void queuePacket(uint8_t events, uint8_t change) {
 // ─────────────────────────────────────────────────────────────
 
 void setup() {
+    // Report this sketch's version in the identity, next to the library's.
+    k7scSetSketchVersion(SKETCH_VERSION_MAJOR, SKETCH_VERSION_MINOR, SKETCH_VERSION_PATCH);
+
     k7scBegin(I2C_ADDRESS, KMC_TYPE_PRE_WARP_TIME, KMC_CAP_DISPLAY);
     buttonsClearAll();
     displayShutdown();

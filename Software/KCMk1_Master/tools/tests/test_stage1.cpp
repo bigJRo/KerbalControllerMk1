@@ -18,6 +18,9 @@ static void testNormalBoot(Rig &r) {
   setup();
   CHECK(r.si.shows("I2C 400 kHz") && serialHas("CONFIG  I2C 400 kHz"), "CONFIG line (short on Sys Info, long on Serial)");
   CHECK(r.si.shows("MASTER v" KCM_MASTER_VERSION) && serialHas("KCMk1 MASTER v" KCM_MASTER_VERSION), "banner with version");
+  { char v[16]; snprintf(v, sizeof v, "%u.%u.%u", KCM_MASTER_VERSION_MAJOR, KCM_MASTER_VERSION_MINOR, KCM_MASTER_VERSION_PATCH);
+    CHECK(strcmp(v, KCM_MASTER_VERSION) == 0, "version string %s from the numbers", KCM_MASTER_VERSION); }
+  CHECK(strcmp(siFirmware(), "1.1.0") == 0, "Sys Info firmware X.Y.Z from its 5-byte read (%s)", siFirmware());
   CHECK(r.si.shows("RESET: POWER ON"), "reset cause power on");
   CHECK(r.si.sevOf("POWER MON OK") == SEV_OK && r.si.sevOf("FAN CTRL OK") == SEV_OK, "board devices OK");
   CHECK(serialHas("INA228   OK") && serialHas("EMC2101  OK"), "board devices on Serial, long form");
@@ -224,8 +227,11 @@ static void testSysInfoLate(Rig &r) {
   boot(1);
   CHECK(r.si.frames.empty() && serialHas("WAITING FOR KSP"), "boot on Serial only");
   Wire.attach(ADDR_SYSINFO, &r.si);
+  r.si.readLen = 4;                               // Sys Info firmware before 1.1.0: no patch
   runFor(5200);
   CHECK(r.si.shows("MASTER v") && r.si.shows("KSP WAIT"), "boot lines replayed when it answers");
+  CHECK(siPresent() && strcmp(siFirmware(), "1.1") == 0, "a 4-byte status read is accepted, version X.Y (%s)", siFirmware());
+  r.si.readLen = 5;
   { const std::vector<uint8_t> *first = nullptr;
     for (auto &f : r.si.frames) if (!f.empty() && f[0] == SI_FRAME_BOOT_LINE) { first = &f; break; }
     CHECK(first && ((*first)[2] & SI_ATTR_REPLAY) && !((*first)[2] & SI_ATTR_REPLACE), "the replay's first line says so");

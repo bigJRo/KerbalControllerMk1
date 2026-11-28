@@ -1,7 +1,7 @@
 /**
  * @file        KC01_1880_TestFirmware.ino
- * @version     2.0.0
- * @date        2026-04-28
+ * @version     2.1.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -37,6 +37,13 @@
 
 #define I2C_ADDRESS     0x2A
 #define DEFAULT_VALUE   0
+
+// This sketch's own version, MAJOR.MINOR.PATCH: reported at identity bytes
+// 5..7 (I2C spec §6) next to the Kerbal7SegmentCore version. Keep @version
+// in step with it. (2.1.0: the identity carries the sketch version.)
+#define SKETCH_VERSION_MAJOR  2
+#define SKETCH_VERSION_MINOR  1
+#define SKETCH_VERSION_PATCH  0
 
 // ── Button state ──────────────────────────────────────────────
 // BTN01: 3-state cycle (0=BACKLIT, 1=GREEN, 2=AMBER)
@@ -92,6 +99,7 @@ static void queueUpdate(uint8_t events, uint8_t change) {
 // ─────────────────────────────────────────────────────────────
 
 void setup() {
+    k7scSetSketchVersion(SKETCH_VERSION_MAJOR, SKETCH_VERSION_MINOR, SKETCH_VERSION_PATCH);
     k7scBegin(I2C_ADDRESS, KMC_TYPE_GPWS_INPUT, KMC_CAP_DISPLAY);
 
     // Boot display self-test: sweep 0→9 on rightmost digit

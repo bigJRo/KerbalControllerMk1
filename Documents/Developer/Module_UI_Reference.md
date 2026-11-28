@@ -1,13 +1,13 @@
 # Kerbal Controller Mk1 — Module UI Reference
 
-**Jeb's Controller Works** | v6.3 | 2026-10-31
+**Jeb's Controller Works** | v6.7 | 2026-11-27
 
 | | |
 |---|---|
 | **Document type** | Developer reference |
 | **Location** | `Documents/Developer/Module_UI_Reference.md` |
 | **Covers** | Every control on every panel: what each button, switch, stick, encoder and display does, its LED, and where it sits |
-| **Master firmware** | `Software/KCMk1_Master` (v0.10.2) |
+| **Master firmware** | `Software/KCMk1_Master` (v0.10.5) |
 | **Module firmware** | `Software/Modules/` |
 
 ---
@@ -350,6 +350,26 @@ Panel Hub on Ctrl Module Extension CN4.
 | 0x2C | Throttle | 0x0D | A2 P3 | Throttle 1871 / 1872 | Standalone |
 | 0x2D | Dual Encoder | 0x0E | B1 (Resource Display P4) | Dual Encoder 1861 / 1862 | Standalone |
 
+Each module's identity (I2C spec §6) reports two versions, each X.Y.Z: its library's and its own sketch's, so a change to a sketch alone (a new button map, say) can be seen from the bus. A standalone sketch has no library and reports its own version in both places. Today:
+
+| Module | Sketch | Library |
+|---|---|---|
+| UI Control | 2.1.0 | KerbalButtonCore 2.5.1 |
+| Function Control | 2.2.0 | KerbalButtonCore 2.5.1 |
+| Action Control | 2.1.0 | KerbalButtonCore 2.5.1 |
+| Stability Control | 2.2.0 | KerbalButtonCore 2.5.1 |
+| Vehicle Control | 2.3.0 | KerbalButtonCore 2.5.1 |
+| Time Control | 2.1.0 | KerbalButtonCore 2.5.1 |
+| AUX CTRL | 2.2.0 | KerbalButtonCore 2.5.1 |
+| Rotation joystick | 2.1.0 | KerbalJoystickCore 2.4.0 |
+| Translation joystick | 2.1.0 | KerbalJoystickCore 2.4.0 |
+| GPWS Input Panel | 2.2.0 | Kerbal7SegmentCore 2.1.0 |
+| Pre-Warp Time | 2.2.0 | Kerbal7SegmentCore 2.1.0 |
+| Throttle | 2.5.0 | Standalone (2.5.0 in both places) |
+| Dual Encoder | 2.4.0 | Standalone (2.4.0 in both places) |
+
+The master's `modules` console command lists them as sketch then library, `2.1.0 / lib 2.5.0`, or one version for a standalone sketch.
+
 0x27, 0x2E and 0x2F are not used. The displays (0x10–0x14) are covered by their own references.
 
 ---
@@ -387,7 +407,7 @@ CHUTE, THC/RHC, AUDIO and Switch Group 1 have no vessel state, so they never rai
 | B18 | U16-4 | SCE | NORM / AUX | Latching | **Demo mode** off / on (§14) |
 | B19 | U16-3 | UPTLM | INHIB / XMIT | Latching | **Debug** off / on: the master's log on USB serial, and every display's own debug output |
 | B20 | U17-4 | LTG | NORM / TEST | Momentary | **Bulb test** while held (at least 0.5 s, so a flick shows) |
-| B21 | U17-3 | A/P | INHIB / ARM | Latching | **Autopilot master arm** (§6.4) |
+| B21 | U17-3 | A/P | INHIB / ENAB | Latching | **Autopilot master arm** (§6.4) |
 | B22 | U17-2 | ENGINE | SAFE / ARM | Latching | **Throttle interlock** (§6.3) |
 | B23 | U17-1 | THRTL | STD / FINE | Latching | **Throttle precision** (§12.3) |
 
@@ -408,16 +428,16 @@ The master tracks three states: SAFE, ARMING and ARMED. Throttle inputs are take
 - **The Throttle Module stays enabled in SAFE.** It refuses lever commands while touched or disabled, so the master re-sends the 0 % target every 200 ms until the lever reports it, and waits while the lever is touched.
 - **Annunciator:** ENG ARM shows the switch.
 
-### 6.4 A/P INHIB / ARM (B21)
+### 6.4 A/P INHIB / ENAB (B21)
 
 | Position | What happens |
 |---|---|
 | **INHIB** | No console autopilot can engage or arm; a refused command is shown on KSP's screen ("A/P INHIB: autopilot not engaged"). Flipping to INHIB disconnects every engaged console autopilot (reason A/P INHIB) |
-| **ARM** | The Info Display 2 consoles work as normal |
+| **ENAB** | The Info Display 2 consoles work as normal (called ARM until v6.5) |
 
-- **HOLD is not affected:** it is not gated by A/P ARM, and A/P INHIB does not drop it (§9.4).
+- **HOLD is not affected:** it is not gated by A/P ENAB, and A/P INHIB does not drop it (§9.4).
 - **Before Switch Group 1 is read,** the A/P is INHIB.
-- **Annunciator:** A/P ARM shows the switch (the tile was THRTL ENA before Annunciator v3.9). AUTOPILOT is lit while any autopilot or HOLD is engaged.
+- **Annunciator:** A/P ENAB shows the switch (the tile was THRTL ENA before Annunciator v3.9, and A/P ARM before v3.10.1). AUTOPILOT is lit while any autopilot or HOLD is engaged.
 
 ### 6.5 Switch Group 2 (Vehicle Control B16–B23, panel B2)
 
@@ -493,7 +513,7 @@ HOLD (Stability B10) is a temporary hold of the current condition (Inventory §8
 | **RVR** | Heading + speed | Hold autopilot RHDG, plus CRUISE at the current speed when the ENGINE is ARMED. With ENGINE SAFE, heading only (wheel throttle held at 0). ENGINE SAFE later drops CRUISE, and HOLD stays on heading |
 
 - **Engaging HOLD** first drops any console autopilot. If the hold autopilot refuses (PLN / RVR: no atmosphere, not on the ground, stale telemetry), HOLD does not engage.
-- **Not gated by A/P ARM.** A/P INHIB and ENGINE SAFE do not release it.
+- **Not gated by A/P ENAB.** A/P INHIB and ENGINE SAFE do not release it.
 - **Released by:**
   - a second press of HOLD;
   - the A/P disconnect (rotation stick button, SPC / PLN);
@@ -781,7 +801,7 @@ All CAG numbers carry the control-group offset.
 
 ## 10. Joysticks
 
-Both joysticks are the Joystick Module (1831 / 1832, KerbalJoystickCore): a 3-axis stick with its own button on terminal U6, plus two RGB buttons BTN01 and BTN02 on the board. Master: `panel_sticks.cpp`.
+Both joysticks are the Joystick Module (1831 / 1832, KerbalJoystickCore): a SaiDian JH-D400X-R4 stick (4-axis; three axes are wired) with its own button on terminal U6, plus two RGB buttons BTN01 and BTN02 on the board. Master: `panel_sticks.cpp`.
 
 **Do not touch a stick for about 80 ms after power-on.** The module reads its centre position then.
 
@@ -1066,4 +1086,8 @@ Superseded by the confirmed panel review (Inventory §10) and the master design.
 | 6.0 | 2026-10-26 | **Rewritten from the confirmed panel review (`Hardware_Inventory.md` §7, §8, §10, §11), `Master_Firmware_Design.md` §8–§11 and the master firmware in `Software/KCMk1_Master`.** New: per-panel slot maps (A1, A2, B1, B2); confirmed button layouts and labels for every module; Switch Group 1 in its confirmed order with A/P INHIB / ARM and ENGINE SAFE / ARM; the switch rule and SWITCH ERR; the mode selector; ABORT and STAGE on the safe lines; control modes, HOLD per mode and autopilot authority; sticks (trim, stick button by mode, camera, EVA keys, precision); the throttle rules; the Dual Encoder control group; demo mode; CAG numbering with Action Control fixed; firmware and label gaps; open items. Removed: Cruise Control, Stage / Stage Enable on Stability, RW DISABLE, the RCS button, the pilot-input autopilot override, and the other superseded content listed in §17. Board numbers corrected (Throttle 1871 / 1872) |
 | 6.1 | 2026-10-27 | **Open items 1, 2, 3, 5 and 6 decided.** The Throttle Module only reports its buttons; the master moves the lever (§12.2, Throttle v2.1). Colours: FLAPS SEAFOAM, HOLD MAGENTA, UN DOCK GOLD, ALT PINK; the Function Control colours follow the confirmed layout and AUX's CORAL alternate is gone (Function / Stability / AUX v2.1). A console's A/P OFF releases HOLD in every mode (§8.2). Camera mode works on EVA (§10.2). The AIRBRK indicator follows the control group (§4.3, InfoDisp v1.17). §15 #1, #3, #5, #9 fixed. Master v0.8.1 |
 | 6.2 | 2026-10-31 | **Module firmware gaps closed (§15 #6, #7, #8, #10).** Pre-Warp BTN03 360 min (v2.1). Annunciator tile A/P ARM (v3.9). The bulb test is start / stop and does not block (KerbalButtonCore 2.3, KerbalJoystickCore 2.1, Throttle 2.2); LTG TEST lights for as long as it is held, at least 0.5 s. The Throttle holds the lever under an autopilot (`CMD_SET_LEVER_HOLD`, at most 0.5 s against a hand, back on release). The Info Displays name reasons 22–24. Master v0.8.2 |
-| **6.3** | **2026-10-31** | **Displays follow the demo flag only (§14, §15 #11 fixed).** In demo every display keeps its Simpit link and takes only the lifecycle; leaving demo is a fresh start on the current scene. The Resource Display keeps the vessel's bar layout across demo. Annunciator v3.10.0 (and its DOCK tile toggles on a tap), Info Display v1.18.0, Resource Display v3.15.0. Master v0.9.0 |
+| 6.3 | 2026-10-31 | **Displays follow the demo flag only (§14, §15 #11 fixed).** In demo every display keeps its Simpit link and takes only the lifecycle; leaving demo is a fresh start on the current scene. The Resource Display keeps the vessel's bar layout across demo. Annunciator v3.10.0 (and its DOCK tile toggles on a tap), Info Display v1.18.0, Resource Display v3.15.0. Master v0.9.0 |
+| 6.4 | 2026-11-25 | **Joystick part corrected (§10):** both sticks are the JH-DX400B-R4, 4-axis; three axes are wired to terminal U6. Master firmware reference v0.10.3. |
+| 6.5 | 2026-11-25 | **A/P switch renamed INHIB / ENAB (§6.2, §6.4)**, was INHIB / ARM, so it does not repeat ENGINE SAFE / ARM next to it on panel A2. Annunciator tile A/P ENAB (v3.10.1); master v0.10.4; Sys Info v1.0.1. |
+| 6.6 | 2026-11-26 | **Firmware versions three-place (§5.5):** each module's identity reports X.Y.Z (I2C spec v2.22), both its library's and its own sketch's: KerbalButtonCore 2.5.0, KerbalJoystickCore 2.4.0, Kerbal7SegmentCore 2.1.0 (reported 1.0 before); the sketch versions in a new table (each library module sketch bumped a minor); Throttle 2.5.0 and Dual Encoder 2.4.0, standalone, report their own version in both places. Master v0.10.5; Sys Info v1.1.0. **§10:** the sticks are the SaiDian JH-D400X-R4 (was given as JH-DX400B-R4). |
+| **6.7** | **2026-11-27** | **§5.5:** the button modules report KerbalButtonCore 2.5.1 (the board pins became overridable per sketch; no change on the modules). |

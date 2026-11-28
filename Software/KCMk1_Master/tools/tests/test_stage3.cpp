@@ -52,11 +52,11 @@ static void testFirstRead(Bench &b) {
   printf("switches: first read sets the master's modes and sends nothing\n");
   boot3(b, SG1_UPTLM | SG1_AP | SG1_ENGINE | SG1_THRTL, SG2_GEAR | SG2_SAS | SG2_AUDIO, TIME_RVR);
   runFor(300);
-  CHECK(g_master.debug && g_panel.apArm && g_panel.engArm && g_panel.thrPrec, "debug, A/P ARM, ENGINE ARM, FINE");
+  CHECK(g_master.debug && g_panel.apArm && g_panel.engArm && g_panel.thrPrec, "debug, A/P ENAB, ENGINE ARM, FINE");
   CHECK(interlockEngineState() == ENG_ARMED, "ENGINE already on ARM is armed straight away");
   CHECK(g_panel.audio && !g_panel.chuteArm && !g_master.demo, "AUDIO LIVE, CHUTE SAFE, demo off");
   CHECK(g_panel.ctrlMode == CTRL_MODE_RVR, "control mode RVR");
-  CHECK(b.rig.si.shows("ENGINE ARM A/P ARM") && b.rig.si.shows("CTRL MODE RVR"), "boot lines");
+  CHECK(b.rig.si.shows("ENGINE ARM A/P ENAB") && b.rig.si.shows("CTRL MODE RVR"), "boot lines");
   enterFlight();
   actions(0);                                    // gear up, SAS off: both disagree
   runFor(20);
@@ -218,11 +218,11 @@ static void testEngine(Bench &b) {
   CHECK(thr.thrPrec, "FINE restored once ARMED");
   CHECK(annFlags(b.rig) & (1u << MF_ENG_ARM), "Annunciator ENG ARM");
 
-  printf("interlocks: A/P INHIB / ARM\n");
+  printf("interlocks: A/P INHIB / ENAB\n");
   flip(f, SG1_AP, false); runFor(20);
   CHECK(drops(DROP_AP_INHIB) == 1 && !g_panel.apArm && !(annFlags(b.rig) & (1u << MF_AP_ARM)), "INHIB: autopilots dropped");
   flip(f, SG1_AP, true); runFor(20);
-  CHECK(drops(DROP_AP_INHIB) == 1 && (annFlags(b.rig) & (1u << MF_AP_ARM)), "ARM: no drop, A/P ARM lit");
+  CHECK(drops(DROP_AP_INHIB) == 1 && (annFlags(b.rig) & (1u << MF_AP_ARM)), "ENAB: no drop, A/P ENAB lit");
 
   printf("interlocks: Switch Group 1 missing\n");
   b.attachAll(); Wire.detach(0x21);
@@ -332,7 +332,7 @@ static void testConsole() {
   Serial.out.clear(); Serial.stubType("switches\n"); runFor(10);
   CHECK(serialHas("GEAR") && serialHas("vessel DOWN") && serialHas("Mode selector"), "switches table");
   Serial.out.clear(); Serial.stubType("interlocks\n"); runFor(10);
-  CHECK(serialHas("ENGINE ARMED") && serialHas("A/P ARM"), "interlocks");
+  CHECK(serialHas("ENGINE ARMED") && serialHas("A/P ENAB"), "interlocks");
   Serial.out.clear(); Serial.stubType("status\n"); runFor(10);
   CHECK(serialHas("ENGINE ARMED"), "status line");
 }

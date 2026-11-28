@@ -70,7 +70,7 @@ void interlockSetApArm(bool arm, bool firstRead) {
   bool was = g_panel.apArm;
   g_panel.apArm = arm;
   if (firstRead || arm == was) return;
-  dbg(DBG_STATE, "A/P switch %s", arm ? "ARM" : "INHIB");
+  dbg(DBG_STATE, "A/P switch %s", arm ? "ENAB" : "INHIB");
   if (!arm) interlockDrop(DROP_AP_INHIB);
 }
 
@@ -111,7 +111,7 @@ static void cmdInterlocks(const char *) {
   if (l.known) conPrintf("  lever %u%s%s%s", l.pos, l.active ? "" : " (module not active)", l.touched ? " touched" : "",
                          l.precision ? " precision" : "");
   else         conPrintf("  lever: no packet yet");
-  conPrintf("A/P %s; %u drop listener(s)", g_panel.apArm ? "ARM" : "INHIB", g_listenerN);
+  conPrintf("A/P %s; %u drop listener(s)", g_panel.apArm ? "ENAB" : "INHIB", g_listenerN);
 }
 
 void interlocksInit() {

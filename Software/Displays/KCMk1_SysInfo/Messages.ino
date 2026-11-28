@@ -120,7 +120,8 @@ uint8_t msgBuild(Msg *out, uint32_t now) {
     fmtUptime(b, sizeof b, s.ext ? s.uptimeS : sincePowerOnMs(now) / 1000);
     msgAdd(raw, n, MR_SERVICE, C_LGREY, C_BLACK, "UPTIME", b);
     if (s.ext) {
-      snprintf(b, sizeof b, "v%u.%u", s.fwMajor, s.fwMinor);
+      if (s.fwPatch == SI_PATCH_UNKNOWN) snprintf(b, sizeof b, "v%u.%u", s.fwMajor, s.fwMinor);
+      else                               snprintf(b, sizeof b, "v%u.%u.%u", s.fwMajor, s.fwMinor, s.fwPatch);
       msgAdd(raw, n, MR_SERVICE, C_LGREY, C_BLACK, "MASTER FW", b);
     }
     msgAdd(raw, n, MR_SERVICE, C_LGREY, C_BLACK, "SYSINFO FW", "v" SYSINFO_VERSION);

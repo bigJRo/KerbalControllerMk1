@@ -65,7 +65,7 @@ struct SwitchName { const char *name, *pos0, *pos1; };
 static const SwitchName SW_NAME[] = {
   { "-", "", "" },
   { "MSTR", "OPER", "RESET" },  { "DISP", "OPER", "CLR" },    { "SCE", "NORM", "AUX" },
-  { "UPTLM", "INHIB", "XMIT" }, { "LTG", "NORM", "TEST" },    { "A/P", "INHIB", "ARM" },
+  { "UPTLM", "INHIB", "XMIT" }, { "LTG", "NORM", "TEST" },    { "A/P", "INHIB", "ENAB" },
   { "ENGINE", "SAFE", "ARM" },  { "THRTL", "STD", "FINE" },   { "CHUTE", "SAFE", "ARM" },
   { "GEAR", "UP", "DOWN" },     { "BRAKE", "REL", "LOCK" },   { "EXT LT", "OFF", "ILLUM" },
   { "SAS", "OFF", "ENAB" },     { "RCS", "OFF", "ENAB" },     { "THC/RHC", "NORM", "PREC" },

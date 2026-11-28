@@ -1,7 +1,7 @@
 /**
  * @file        K7SC_I2C.cpp
- * @version     2.0.0
- * @date        2026-04-27
+ * @version     2.1.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -24,6 +24,12 @@ K7SCInputState   inputState = {0, 0, 0, 0, false};
 // ── Module identity ───────────────────────────────────────────
 static uint8_t _typeId   = 0xFF;
 static uint8_t _capFlags = 0;
+
+// The module sketch's own version (set by k7scSetSketchVersion), identity
+// bytes 5..7. KMC_SKETCH_VERSION_UNKNOWN until the sketch sets it.
+static uint8_t _sketchMajor = KMC_SKETCH_VERSION_UNKNOWN;
+static uint8_t _sketchMinor = KMC_SKETCH_VERSION_UNKNOWN;
+static uint8_t _sketchPatch = KMC_SKETCH_VERSION_UNKNOWN;
 
 // ── Packet state ──────────────────────────────────────────────
 static bool    _fault       = false;
@@ -62,6 +68,10 @@ static void _sendIdentity() {
     Wire.write(K7SC_FIRMWARE_MAJOR);
     Wire.write(K7SC_FIRMWARE_MINOR);
     Wire.write(_capFlags);
+    Wire.write(K7SC_FIRMWARE_PATCH);
+    Wire.write(_sketchMajor);
+    Wire.write(_sketchMinor);
+    Wire.write(_sketchPatch);
 }
 
 // ── Data packet ───────────────────────────────────────────────
@@ -172,6 +182,13 @@ static void _onRequest() {
         // Master should not be reading without a prior INT assertion.
         for (uint8_t i = 0; i < K7SC_HEADER_SIZE; i++) Wire.write((uint8_t)0);
     }
+}
+
+// ── k7scSetSketchVersion() ────────────────────────────────────
+void k7scSetSketchVersion(uint8_t major, uint8_t minor, uint8_t patch) {
+    _sketchMajor = major;
+    _sketchMinor = minor;
+    _sketchPatch = patch;
 }
 
 // ── k7scI2CBegin() ────────────────────────────────────────────

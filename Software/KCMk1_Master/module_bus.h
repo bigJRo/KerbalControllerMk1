@@ -73,6 +73,14 @@ void     moduleBusFlushLeds();
 void     moduleBusSetHandler(ModId id, ModHandler h);
 
 bool     modulePresent(ModId id);
+// The versions from the module's identity (I2C spec §6): "S / lib L", the sketch's own
+// X.Y.Z then its library's, e.g. "2.1.0 / lib 2.5.0"; a single "X.Y.Z" when the two are
+// the same (a standalone sketch such as the Throttle sends its version twice); "- / lib L"
+// when the sketch version is unknown (a 5- or 4-byte identity, or 0xFF). A version with
+// no patch (the 4-byte form, or 0xFF) shows as X.Y. "-" for a module that is not
+// present. `prefix` (e.g. "v") goes before the first version number. Returns buf.
+static const uint8_t MOD_FW_TEXT_LEN = 32;   // "255.255.255 / lib 255.255.255" + prefix
+const char *moduleFwText(ModId id, char *buf, uint8_t n, const char *prefix = "");
 bool     moduleHasLeds(ModId id);
 uint8_t  moduleAddr(ModId id);
 const char *moduleName(ModId id);

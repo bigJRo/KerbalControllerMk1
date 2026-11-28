@@ -1,11 +1,11 @@
 # KerbalButtonCore
 
-**Version:** 2.4.0  
+**Version:** 2.5.1  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1801/1802 (Button) and KC-01-1811/1812 (Wide Button)  
 **Target MCU:** ATtiny816 (megaTinyCore)  
-**Protocol:** I2C_Protocol_Specification.md v2.21 (conformant)  
+**Protocol:** I2C_Protocol_Specification.md v2.22 (conformant)  
 
 ---
 
@@ -19,7 +19,7 @@ The library manages:
   (or 24 inputs via three registers — see *24-input switch-group modules*)
 - 12 RGB NeoPixel buttons (WS2811, tinyNeoPixel_Static)
 - 4 discrete LED outputs (2N3904 NPN switched, on/off only)
-- I2C target communication, fully conformant with system I2C Protocol v2.21
+- I2C target communication, fully conformant with system I2C Protocol v2.22
   (universal 3-byte header, transaction counter, lifecycle state machine)
 - Dual-buffer button state latching with guaranteed edge detection
 - Per-button LED state machine with core and extended states
@@ -113,8 +113,14 @@ const RGBColor activeColors[KBC_BUTTON_COUNT] = {
 // Instantiate — Type ID and capability flags defined in KBC_Protocol.h
 KerbalButtonCore kbc(KBC_TYPE_UI_CONTROL, 0, activeColors);
 
+// This sketch's own version, reported in the identity next to the library's
+#define SKETCH_VERSION_MAJOR 1
+#define SKETCH_VERSION_MINOR 0
+#define SKETCH_VERSION_PATCH 0
+
 void setup() {
-    Wire.begin(0x20);   // Set this module's I2C address — must be first
+    kbc.setSketchVersion(SKETCH_VERSION_MAJOR, SKETCH_VERSION_MINOR, SKETCH_VERSION_PATCH);
+    Wire.begin(0x20);   // Set this module's I2C address
     kbc.begin();        // Initialise all subsystems
 }
 
@@ -184,14 +190,20 @@ Two buttons per byte, high nibble first. Nibble values:
 | `0x7` | CUT            | Static red (state-machine terminal) |
 | `0x8` | ACTIVE_ALT     | Second per-button active color (alt-color array) |
 
-### Identity Response (4 bytes)
+### Identity Response (8 bytes)
 
 ```
 Byte 0: Module Type ID
-Byte 1: Firmware major
-Byte 2: Firmware minor
+Byte 1: Library version major
+Byte 2: Library version minor
 Byte 3: Capability flags
+Byte 4: Library version patch
+Byte 5: Sketch version major
+Byte 6: Sketch version minor
+Byte 7: Sketch version patch
 ```
+
+Bytes 1, 2 and 4 are the library's own version (`KBC_FIRMWARE_MAJOR` / `_MINOR` / `_PATCH` in `KBC_Config.h`), the same on every button module: 2.5.1 for this release. Bytes 5–7 are the module sketch's own version, which the sketch passes with `kbc.setSketchVersion(major, minor, patch)` in `setup()`, from its `SKETCH_VERSION_*` constants. A sketch that does not call it reports 0xFF 0xFF 0xFF there (`KMC_SKETCH_VERSION_UNKNOWN`), which a reader shows as unknown.
 
 ---
 
@@ -300,6 +312,21 @@ Any `KBC_Config.h` constant guarded by `#ifndef` can be overridden per sketch by
 #include <KerbalButtonCore.h>
 ```
 
+The board pins and the NeoPixel colour order are guarded too (2.5.1), so a sketch for other
+hardware, such as the KC-01-9101 dev board, sets them the same way:
+
+```cpp
+#define KBC_PIN_INT          PIN_PA4    // PA1 on the module boards
+#define KBC_PIN_NEO          PIN_PB4    // PA4
+#define KBC_NEO_COLOR_ORDER  NEO_GRB    // NEO_RGB (WS2811)
+#include <KerbalButtonCore.h>
+```
+
+Guarded: `KBC_PIN_INT`, `KBC_PIN_SR_LOAD`, `KBC_PIN_SR_CLK_EN`, `KBC_PIN_SR_CLK`,
+`KBC_PIN_SR_DATA`, `KBC_PIN_NEO`, `KBC_NEO_COLOR_ORDER`, `KBC_INPUT_COUNT`,
+`KBC_SHIFTREG_COUNT`, `KBC_ENABLED_BRIGHTNESS` and the four flash timings. The I2C pins (hardware),
+the NeoPixel count, the polling and debounce timing and the version are fixed.
+
 ---
 
 ## 24-input switch-group modules
@@ -370,6 +397,10 @@ KerbalButtonCore/
     └── DiagnosticDump/         — serial debug output of button and LED state
 ```
 
+Each example reports its own sketch version in the identity, as a module
+sketch does: `SKETCH_VERSION_*` constants passed with `kbc.setSketchVersion()`
+at the start of `setup()`. Set them to your sketch's version when you copy one.
+
 The `.ipp` files hold the implementation. `KerbalButtonCore.h` includes them
 at its end, so the library is compiled inside the sketch together with the
 sketch's configuration `#define`s. Include `KerbalButtonCore.h` from the main
@@ -381,6 +412,8 @@ sketch's configuration `#define`s. Include `KerbalButtonCore.h` from the main
 
 | Version | Date | Notes |
 |---|---|---|
+| 2.5.1 | 2026-11-27 | The board pins (`KBC_PIN_INT`, the four `KBC_PIN_SR_*`, `KBC_PIN_NEO`) and `KBC_NEO_COLOR_ORDER` gain `#ifndef` guards, so a sketch overrides them by defining them before the include, as the header always said. Before, `KBC_Config.h` replaced a sketch's value with the module-board value; the dev-board target had to include `KBC_Config.h` first and `#undef` them. No change for the module sketches, which define none of them. Modules report library 2.5.1. |
+| 2.5.0 | 2026-11-26 | The identity response is 8 bytes (I2C spec v2.22 §6): the library patch is appended at byte 4, so a module reports the full library version, 2.5.0 (`KBC_FIRMWARE_PATCH` added), and the module sketch's own version follows at bytes 5–7. `KerbalButtonCore::setSketchVersion()` sets it (0xFF, unknown, until the sketch calls it). The examples (2.1.0) call it with their own `SKETCH_VERSION_*`. Needs KerbalModuleCommon 1.9.0. |
 | 2.4.0 | 2026-11-08 | Sources renamed `.cpp` → `.ipp` and included from `KerbalButtonCore.h`, so the sketch's `KBC_INPUT_COUNT` / `KBC_SHIFTREG_COUNT` reach the library. Before, Function and Vehicle Control (24 inputs) ran a 16-input library with a class layout that did not match the sketch. Identity firmware 2.4 (was 2.2). |
 
 ---

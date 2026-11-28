@@ -177,7 +177,7 @@ static const uint8_t VSIT_LANDED    = 7;
 static const uint8_t MF_DEMO        =  0;
 static const uint8_t MF_WARP        =  1;
 static const uint8_t MF_AUDIO       =  2;
-static const uint8_t MF_AP_ARM      =  3;   // A/P INHIB / ARM switch (was THRTL ENA, same bit)
+static const uint8_t MF_AP_ARM      =  3;   // A/P INHIB / ENAB switch (was THRTL ENA, same bit)
 static const uint8_t MF_TRIM        =  4;
 static const uint8_t MF_AUTOPILOT   =  5;
 static const uint8_t MF_DEBUG       =  6;
@@ -290,7 +290,7 @@ enum ChuteEnvState : uint8_t {
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;
 static const uint8_t SKETCH_VERSION_MINOR = 10;  // 3.10.0: demo follows the master's flag only; DOCK tile touch; backlight dimming
-static const uint8_t SKETCH_VERSION_PATCH = 0;
+static const uint8_t SKETCH_VERSION_PATCH = 1;  // 3.10.1: mode tile A/P ENAB (was A/P ARM)
 
 
 /***************************************************************************************

@@ -65,18 +65,27 @@ static void sendControl() {
   siWrite(f, 2);
 }
 
+// The display's version from its last status read, "X.Y.Z" ("X.Y" from a display that
+// sends no patch byte, or 0xFF).
+static char g_siFw[12] = "-";
+
 static bool readStatus(uint8_t *flags) {
-  uint8_t b[SI_READ_LEN];
-  if (busRead(ADDR_SYSINFO, b, SI_READ_LEN) != BUS_OK || b[0] != SYNC_SYSINFO) return false;
+  uint8_t b[SI_READ_LEN], got = 0;
+  if (busReadAtLeast(ADDR_SYSINFO, b, SI_READ_LEN, SI_READ_LEN_V1, &got) != BUS_OK || b[0] != SYNC_SYSINFO) return false;
   if (flags) *flags = b[1];
+  if (got < SI_READ_LEN || b[4] == 0xFF) snprintf(g_siFw, sizeof g_siFw, "%u.%u", b[2], b[3]);
+  else                                   snprintf(g_siFw, sizeof g_siFw, "%u.%u.%u", b[2], b[3], b[4]);
   return true;
 }
+
+const char *siFirmware() { return g_siFw; }
 
 void siInit() {
   g_present = g_bootDone = g_replayOverflow = false;
   g_seq = g_replayN = g_swErrN = 0;
   g_swErrDirty = false;
   memset(&g_status, 0, sizeof g_status);
+  strcpy(g_siFw, "-");
   g_lastCtlMs = g_lastStatusMs = g_lastProbeMs = millis();
 }
 
@@ -170,6 +179,7 @@ static void sendStatus() {
   put16(f + 23, (uint16_t)(up >> 16));
   f[25] = KCM_MASTER_VERSION_MAJOR;
   f[26] = KCM_MASTER_VERSION_MINOR;
+  f[27] = KCM_MASTER_VERSION_PATCH;      // from v0.10.5 (I2C spec v2.22)
   siWrite(f, SI_STATUS_LEN);
 }
 
@@ -192,7 +202,7 @@ void siService() {
     if (!readStatus(nullptr)) return;
     g_present = true;
     g_master.sysInfoPresent = true;
-    dbg(DBG_DISPLAY, "Sys Info Display answered");
+    dbg(DBG_DISPLAY, "Sys Info Display answered, fw %s", g_siFw);
     if (g_bootDone) {                // late: skip the boot log, go straight to status
       siBootDone();
       g_swErrDirty = true;

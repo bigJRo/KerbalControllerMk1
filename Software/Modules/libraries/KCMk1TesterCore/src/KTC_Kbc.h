@@ -1,17 +1,17 @@
 /**
  * @file        KTC_Kbc.h
- * @version     1.0.0
+ * @version     1.1.1
  * @project     Kerbal Controller Mk1 — Module Tester per-module sketches
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
  *
  * @brief       Ready-made checks for the KerbalButtonCore modules (UI, Function,
  *              Action, Stability, Vehicle, Time and Auxiliary Control). All
- *              seven run the same library (identity fw 2.4): 12 WS2811
+ *              seven run the same library (identity fw 2.5.0): 12 WS2811
  *              NeoPixels on positions 0-11, inputs reported as a level plane
  *              plus a change plane, LED states set only by the master.
  *
- *              Behaviour the checks expect (KerbalButtonCore 2.4 source):
+ *              Behaviour the checks expect (KerbalButtonCore 2.5 source):
  *                - ENABLED renders cool white scaled by CMD_SET_BRIGHTNESS
  *                  (default 32), not KMC_BACKLIT.
  *                - ACTIVE_ALT renders the ACTIVE colour (no module passes an
@@ -25,8 +25,9 @@
 #pragma once
 #include "KTC_Steps.h"
 
-#define KTC_KBC_FW_MAJOR   2
-#define KTC_KBC_FW_MINOR   4
+#define KTC_KBC_FW_MAJOR   2   // KerbalButtonCore 2.5.1 (KBC_FIRMWARE_* in KBC_Config.h)
+#define KTC_KBC_FW_MINOR   5
+#define KTC_KBC_FW_PATCH   1
 #define KTC_KBC_BRIGHTNESS_DEFAULT  32
 
 extern const KtcBootCfg    ktcKbcBoot;

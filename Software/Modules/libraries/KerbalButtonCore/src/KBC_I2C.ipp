@@ -1,7 +1,7 @@
 /**
  * @file        KBC_I2C.ipp
- * @version     2.4.0
- * @date        2026-04-07
+ * @version     2.5.1
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -38,6 +38,9 @@ KBCi2C::KBCi2C(KBCShiftReg&   shiftReg,
     , _ledControl(ledControl)
     , _moduleTypeId(moduleTypeId)
     , _capFlags(capFlags)
+    , _sketchMajor(KMC_SKETCH_VERSION_UNKNOWN)
+    , _sketchMinor(KMC_SKETCH_VERSION_UNKNOWN)
+    , _sketchPatch(KMC_SKETCH_VERSION_UNKNOWN)
     , _intAsserted(false)
     , _cmdLen(0)
     , _lifecycle(KMC_STATUS_BOOT_READY)
@@ -47,6 +50,16 @@ KBCi2C::KBCi2C(KBCShiftReg&   shiftReg,
     , _pendingResponse(RESPONSE_NONE)
 {
     memset(_cmdBuf, 0, sizeof(_cmdBuf));
+}
+
+// ============================================================
+//  setSketchVersion()
+// ============================================================
+
+void KBCi2C::setSketchVersion(uint8_t major, uint8_t minor, uint8_t patch) {
+    _sketchMajor = major;
+    _sketchMinor = minor;
+    _sketchPatch = patch;
 }
 
 // ============================================================
@@ -364,6 +377,10 @@ void KBCi2C::_sendIdentityPacket() {
     pkt.firmwareMajor   = KBC_FIRMWARE_MAJOR;
     pkt.firmwareMinor   = KBC_FIRMWARE_MINOR;
     pkt.capabilityFlags = _capFlags;
+    pkt.firmwarePatch   = KBC_FIRMWARE_PATCH;
+    pkt.sketchMajor     = _sketchMajor;
+    pkt.sketchMinor     = _sketchMinor;
+    pkt.sketchPatch     = _sketchPatch;
 
     uint8_t buf[KBC_IDENTITY_PACKET_SIZE];
     KBC_serializeIdentityPacket(&pkt, buf);

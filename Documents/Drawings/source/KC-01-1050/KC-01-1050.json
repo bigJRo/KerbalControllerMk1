@@ -1,0 +1,1633 @@
+{
+  "base": "KC-01-105",
+  "name": "Panel B2",
+  "title": "Panel B2",
+  "subtitle": "Kerbal Controller Mk1 · Main enclosure",
+  "rev": "C",
+  "board_version": "B2",
+  "version_label": "Panel",
+  "date": "2026-11-26",
+  "status": "RELEASED",
+  "created_by": "J. Rostoker",
+  "approved_by": "J. Kerman",
+  "package_docs": "01",
+  "doc_types": {
+    "0": [
+      "ASSY",
+      "Assembly Drawing"
+    ],
+    "1": [
+      "PART",
+      "Part Control Drawing",
+      ""
+    ]
+  },
+  "doc_title": {
+    "0": "Panel B2 Complete",
+    "1": "Panel B2 Base"
+  },
+  "doc_name": {
+    "0": "Panel B2 Complete",
+    "1": "Panel B2 Base"
+  },
+  "doc_status": {
+    "0": "RELEASED",
+    "1": "RELEASED"
+  },
+  "revisions": [
+    [
+      "A",
+      "Initial release (Fusion drawings)",
+      "2026-06-21",
+      "J. Kerman"
+    ],
+    [
+      "B",
+      "KC frame; base module types; hole table",
+      "2026-11-26",
+      "J. Kerman"
+    ],
+    [
+      "C",
+      "Part numbers and sources corrected: toggles, switch cover, STAGE button, joystick",
+      "2026-11-26",
+      "J. Kerman"
+    ]
+  ],
+  "view_docs": {
+    "0": {
+      "pdf": "Fusion_KC-01-1050_Panel_B2_Complete_2026-11-25.pdf",
+      "line_scale": 0.35,
+      "sheets": [
+        {
+          "scale": 0.4,
+          "views": [
+            {
+              "page": 1,
+              "src": [
+                198.8,
+                27.8,
+                372.2,
+                139.3
+              ],
+              "k": 1.0,
+              "label": "FRONT VIEW",
+              "auto_masks": true,
+              "at": [
+                226,
+                44
+              ],
+              "masks": []
+            },
+            {
+              "page": 1,
+              "src": [
+                103.8,
+                27.8,
+                155.1,
+                139.3
+              ],
+              "k": 1.0,
+              "label": "SIDE VIEW",
+              "auto_masks": true,
+              "at": [
+                164.7,
+                44.0
+              ],
+              "masks": []
+            },
+            {
+              "page": 1,
+              "src": [
+                198.8,
+                166.2,
+                372.2,
+                217.6
+              ],
+              "k": 1.0,
+              "label": "TOP VIEW",
+              "auto_masks": true,
+              "at": [
+                226.0,
+                167.5
+              ],
+              "masks": []
+            },
+            {
+              "page": 1,
+              "src": [
+                36.3,
+                116.0,
+                165.5,
+                277.2
+              ],
+              "k": 1.0,
+              "at": [
+                18,
+                50
+              ],
+              "label": "ISOMETRIC VIEW",
+              "auto_masks": true,
+              "masks": [
+                [
+                  104.88,
+                  115.5,
+                  144.38,
+                  138.22
+                ]
+              ]
+            }
+          ],
+          "notes": true
+        },
+        {
+          "scale": 0.4,
+          "views": [
+            {
+              "page": 2,
+              "src": [
+                189.0,
+                34.4,
+                362.5,
+                145.8
+              ],
+              "k": 1.0,
+              "label": "REAR VIEW",
+              "auto_masks": true,
+              "at": [
+                226,
+                44
+              ],
+              "masks": []
+            },
+            {
+              "page": 2,
+              "src": [
+                93.9,
+                34.4,
+                145.2,
+                145.8
+              ],
+              "k": 1.0,
+              "label": "SIDE VIEW",
+              "auto_masks": true,
+              "at": [
+                164.7,
+                44.0
+              ],
+              "masks": []
+            },
+            {
+              "page": 2,
+              "src": [
+                189.0,
+                162.4,
+                362.5,
+                213.7
+              ],
+              "k": 1.0,
+              "label": "TOP VIEW",
+              "auto_masks": true,
+              "at": [
+                226.0,
+                167.4
+              ],
+              "masks": []
+            },
+            {
+              "page": 2,
+              "src": [
+                42.2,
+                126.0,
+                171.4,
+                287.2
+              ],
+              "k": 1.0,
+              "at": [
+                18,
+                50
+              ],
+              "label": "ISOMETRIC VIEW (REAR)",
+              "auto_masks": true,
+              "masks": [
+                [
+                  104.56,
+                  125.5,
+                  143.29,
+                  144.67
+                ],
+                [
+                  41.7,
+                  286.53,
+                  171.86,
+                  287.66
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "scale": 0.2,
+          "parts_list": {
+            "at": [
+              172,
+              50
+            ],
+            "w": 233,
+            "cols": [
+              9,
+              9,
+              27,
+              48,
+              120
+            ],
+            "size": 2.4
+          },
+          "views": [
+            {
+              "page": 3,
+              "src": [
+                118,
+                128,
+                301,
+                250
+              ],
+              "clip": [
+                [
+                  118,
+                  128
+                ],
+                [
+                  301,
+                  128
+                ],
+                [
+                  301,
+                  239.0
+                ],
+                [
+                  229.0,
+                  239.0
+                ],
+                [
+                  229.0,
+                  250
+                ],
+                [
+                  118,
+                  250
+                ]
+              ],
+              "k": 0.8,
+              "at": [
+                16,
+                44
+              ],
+              "label": "FRONT",
+              "auto_masks": true,
+              "body": [
+                159.4,
+                147.4,
+                266.8,
+                216.0
+              ],
+              "gap": 0.2,
+              "relabel": [
+                {
+                  "at": [
+                    291.2,
+                    158.1
+                  ],
+                  "r": 3.9,
+                  "text": "4",
+                  "size": 5.0
+                },
+                {
+                  "at": [
+                    291.25,
+                    185.08
+                  ],
+                  "r": 3.9,
+                  "text": "4",
+                  "size": 5.0
+                }
+              ],
+              "masks": [
+                [
+                  229.38,
+                  239.63,
+                  301.51,
+                  250.55
+                ],
+                [
+                  230.78,
+                  240.65,
+                  237.25,
+                  243.82
+                ],
+                [
+                  254.65,
+                  240.65,
+                  256.94,
+                  243.32
+                ],
+                [
+                  256.18,
+                  240.65,
+                  265.95,
+                  243.44
+                ],
+                [
+                  266.21,
+                  240.65,
+                  277.38,
+                  243.44
+                ],
+                [
+                  288.69,
+                  240.65,
+                  298.21,
+                  243.44
+                ],
+                [
+                  298.34,
+                  240.65,
+                  301.51,
+                  243.95
+                ],
+                [
+                  254.65,
+                  244.71,
+                  258.34,
+                  249.16
+                ],
+                [
+                  263.16,
+                  244.71,
+                  264.43,
+                  249.03
+                ],
+                [
+                  268.24,
+                  244.71,
+                  271.42,
+                  249.03
+                ],
+                [
+                  272.31,
+                  244.71,
+                  275.48,
+                  249.16
+                ],
+                [
+                  288.69,
+                  244.71,
+                  291.48,
+                  249.16
+                ],
+                [
+                  294.15,
+                  244.71,
+                  297.96,
+                  249.03
+                ],
+                [
+                  257.95,
+                  245.6,
+                  263.54,
+                  249.16
+                ],
+                [
+                  264.18,
+                  245.6,
+                  267.35,
+                  249.16
+                ],
+                [
+                  297.32,
+                  245.6,
+                  300.5,
+                  249.16
+                ],
+                [
+                  271.29,
+                  245.73,
+                  272.69,
+                  247.0
+                ],
+                [
+                  300.12,
+                  245.73,
+                  301.51,
+                  247.76
+                ],
+                [
+                  300.12,
+                  247.38,
+                  301.51,
+                  249.03
+                ],
+                [
+                  271.29,
+                  247.76,
+                  272.69,
+                  249.03
+                ],
+                [
+                  291.36,
+                  247.76,
+                  292.75,
+                  249.03
+                ]
+              ]
+            },
+            {
+              "page": 4,
+              "src": [
+                118,
+                128,
+                301,
+                250
+              ],
+              "clip": [
+                [
+                  118,
+                  128
+                ],
+                [
+                  301,
+                  128
+                ],
+                [
+                  301,
+                  239.0
+                ],
+                [
+                  229.0,
+                  239.0
+                ],
+                [
+                  229.0,
+                  250
+                ],
+                [
+                  118,
+                  250
+                ]
+              ],
+              "k": 0.8,
+              "at": [
+                16,
+                155
+              ],
+              "label": "REAR",
+              "auto_masks": true,
+              "body": [
+                156.3,
+                155.8,
+                263.7,
+                224.5
+              ],
+              "gap": 0.2,
+              "relabel": [
+                {
+                  "at": [
+                    128.67,
+                    161.7
+                  ],
+                  "r": 3.9,
+                  "text": "4",
+                  "size": 5.0
+                },
+                {
+                  "at": [
+                    134.13,
+                    202.68
+                  ],
+                  "r": 3.9,
+                  "text": "4",
+                  "size": 5.0
+                }
+              ],
+              "masks": [
+                [
+                  229.38,
+                  239.63,
+                  301.51,
+                  250.55
+                ],
+                [
+                  230.78,
+                  240.65,
+                  237.25,
+                  243.82
+                ],
+                [
+                  254.65,
+                  240.65,
+                  256.94,
+                  243.32
+                ],
+                [
+                  256.18,
+                  240.65,
+                  265.95,
+                  243.44
+                ],
+                [
+                  266.21,
+                  240.65,
+                  277.38,
+                  243.44
+                ],
+                [
+                  288.69,
+                  240.65,
+                  298.21,
+                  243.44
+                ],
+                [
+                  298.34,
+                  240.65,
+                  301.51,
+                  243.95
+                ],
+                [
+                  254.65,
+                  244.71,
+                  258.34,
+                  249.16
+                ],
+                [
+                  263.16,
+                  244.71,
+                  264.43,
+                  249.03
+                ],
+                [
+                  268.24,
+                  244.71,
+                  271.42,
+                  249.03
+                ],
+                [
+                  272.31,
+                  244.71,
+                  275.48,
+                  249.16
+                ],
+                [
+                  288.69,
+                  244.71,
+                  291.48,
+                  249.16
+                ],
+                [
+                  294.15,
+                  244.71,
+                  297.96,
+                  249.03
+                ],
+                [
+                  257.95,
+                  245.6,
+                  263.54,
+                  249.16
+                ],
+                [
+                  264.18,
+                  245.6,
+                  267.35,
+                  249.16
+                ],
+                [
+                  297.32,
+                  245.6,
+                  300.5,
+                  249.16
+                ],
+                [
+                  271.29,
+                  245.73,
+                  272.69,
+                  247.0
+                ],
+                [
+                  300.12,
+                  245.73,
+                  301.51,
+                  247.76
+                ],
+                [
+                  300.12,
+                  247.38,
+                  301.51,
+                  249.03
+                ],
+                [
+                  271.29,
+                  247.76,
+                  272.69,
+                  249.03
+                ],
+                [
+                  291.36,
+                  247.76,
+                  292.75,
+                  249.03
+                ]
+              ]
+            }
+          ]
+        }
+      ],
+      "parts": [
+        {
+          "qty": 1,
+          "pn": "KC-01-1051",
+          "name": "Panel B2 Base",
+          "desc": "Acrylic, Stone, 3.00 mm; laser cut and engraved; Mfr: Ponoko"
+        },
+        {
+          "qty": 1,
+          "pn": "KC-01-1840",
+          "name": "7-Segment Display Module",
+          "desc": "Pre-Warp Time (0x2B): 4-digit display (MAX7219), rotary encoder, 3 push buttons; ATtiny816"
+        },
+        {
+          "qty": 4,
+          "pn": "92000A114",
+          "name": "Screw - M3 - 5mm",
+          "desc": "Passivated 18-8 stainless steel pan head Phillips screw, M3 × 0.5 mm thread, 5 mm long"
+        },
+        {
+          "qty": 3,
+          "pn": "KC-01-1800",
+          "name": "Button Module",
+          "desc": "Time Control (0x25), Stability Control (0x23) and AUX CTRL (0x26): 12× RGB buttons, 4 switch inputs; ATtiny816"
+        },
+        {
+          "qty": 28,
+          "pn": "92000A118",
+          "name": "Screw - M3 - 8mm",
+          "desc": "Passivated 18-8 stainless steel pan head Phillips screw, M3 × 0.5 mm thread, 8 mm long"
+        },
+        {
+          "qty": 1,
+          "pn": "KC-01-1830",
+          "name": "Joystick Module",
+          "desc": "Rotation (0x28): stick on terminal U6, 2× RGB buttons; ATtiny816"
+        },
+        {
+          "qty": 1,
+          "pn": "JH-D400X-R4",
+          "name": "Joystick - 4-Axis",
+          "desc": "SaiDian JH-D400X-R4 4-axis 10 kΩ joystick potentiometer, three axes used; Amazon B08CGYGMJL"
+        },
+        {
+          "qty": 1,
+          "pn": "KC-01-1810",
+          "name": "Wide Button Module",
+          "desc": "Vehicle Control (0x24): 12× RGB buttons, 8 switch inputs (Switch Group 2); ATtiny816. Panel Hub (KC-01-1732) mounted behind"
+        },
+        {
+          "qty": 1,
+          "pn": "LA38-20X3",
+          "name": "3-Position Selector",
+          "desc": "Zhrivoer LA38-20X3 selector knob rotary switch, latching, 3 positions, 22 mm, black (MODE: SPC / PLN / RVR)"
+        },
+        {
+          "qty": 1,
+          "pn": "AE 3256807837994773",
+          "name": "Metal Momentary Push - 22mm - GREEN",
+          "desc": "Metallic momentary self-reset push button, flat head, 22 mm, green, 3–6 V LED, lit from +5 V (STAGE); Hanhai Electric Appliances and Accessories Store, AliExpress item, 22 mm green 3–6 V variant; was 31000001"
+        },
+        {
+          "qty": 1,
+          "pn": "AE 3256805484145709",
+          "name": "Toggle Switch Cover - Green",
+          "desc": "Toggle switch flip cover, 12 mm, green (stage arming switch); HC Electrical Store, AliExpress item, green variant; was 11000002"
+        },
+        {
+          "qty": 9,
+          "pn": "FLP12-FJ-1021P-L",
+          "name": "Switch - SPST On/Off Toggle",
+          "desc": "FILN FLP12-FJ 12 mm toggle switch, SPST on/off, latching, 2 solder pins, 15 A 250 V (CHUTE, GEAR, BRAKE, EXT LT, SAS, RCS, THC/RHC, AUDIO and the stage arming switch); AliExpress item 2251832731902430"
+        },
+        {
+          "qty": 8,
+          "pn": "PDM-005",
+          "name": "Switch Guard",
+          "desc": "Hard-anodized A356-T6 aluminum, 1.18″ wide, 0.90″ × 1.04″; Space Shuttle replica"
+        }
+      ],
+      "notes": [
+        "1. Item 1 is cut and engraved from the KC-01-1051 production file of the same revision.",
+        "2. Items 2, 4, 6 and 8 are complete modules to their own drawing packages; their button labels are in Documents/Labels/B2.",
+        "3. The Panel Hub mounts behind the Wide Button Module (KC-01-1810). Slots: P1 empty, P2 Pre-Warp Time, P3 Time Control, P4 Vehicle Control, P5 empty, P6 Stability Control, P7 AUX CTRL, P8 Rotation.",
+        "4. STAGE (item 10) and its arming switch (under item 11) go to the Panel Hub safe-switch terminal; MODE (item 9) goes to Time Control terminal CN2 (Hardware Reference §4.5).",
+        "5. Sheets 1 and 2 at 2:5, sheet 3 at 1:5, on A3. Parts list on sheet 3."
+      ]
+    },
+    "1": {
+      "pdf": "Fusion_KC-01-1051_Panel_B2_Base_2026-11-25.pdf",
+      "line_scale": 0.35,
+      "sheets": [
+        {
+          "scale": 0.4,
+          "views": [
+            {
+              "page": 1,
+              "src": [
+                195.0,
+                29.8,
+                368.3,
+                141.3
+              ],
+              "k": 1.0,
+              "label": "FRONT VIEW",
+              "at": [
+                224,
+                52
+              ]
+            },
+            {
+              "page": 1,
+              "src": [
+                110.8,
+                29.8,
+                114.3,
+                141.3
+              ],
+              "k": 1.0,
+              "label": "SIDE VIEW",
+              "at": [
+                202.5,
+                52.0
+              ]
+            },
+            {
+              "page": 1,
+              "src": [
+                195.0,
+                193.9,
+                368.3,
+                198.5
+              ],
+              "k": 1.0,
+              "label": "TOP VIEW",
+              "at": [
+                224.0,
+                177.5
+              ]
+            },
+            {
+              "page": 1,
+              "src": [
+                43.8,
+                116.5,
+                168.3,
+                277.8
+              ],
+              "k": 1.0,
+              "at": [
+                45,
+                46
+              ],
+              "label": "ISOMETRIC VIEW",
+              "auto_masks": true,
+              "masks": [
+                [
+                  111.49,
+                  116.0,
+                  113.9,
+                  140.12
+                ]
+              ]
+            }
+          ],
+          "notes": true
+        },
+        {
+          "scale": 0.6666666666666666,
+          "views": [
+            {
+              "pdf": "Panel_B2_Production_2026-11-26.ai",
+              "page": 1,
+              "src": [
+                235.5,
+                113.0,
+                664.2,
+                386.8
+              ],
+              "at": [
+                67.1,
+                40
+              ],
+              "k": 0.6666666666666666,
+              "line_scale": 1.0,
+              "label": "PRODUCTION FILE (Panel_B2_Production.ai): RED = CUT, BLUE = ENGRAVE"
+            }
+          ]
+        },
+        {
+          "scale": 0.5,
+          "views": [
+            {
+              "pdf": "Panel_B2_Production_2026-11-26.ai",
+              "page": 1,
+              "src": [
+                235.5,
+                113.0,
+                664.2,
+                386.8
+              ],
+              "at": [
+                37,
+                61
+              ],
+              "k": 0.5,
+              "line_scale": 1.0,
+              "keep_paths": "fill=\"none\"",
+              "label": "HOLE LOCATIONS (CUT LAYER OF THE PRODUCTION FILE)",
+              "sublabel": "Datum: lower-left corner of the outline. X right, Y up. Dimensions in mm.",
+              "hole_view": {
+                "max_dia": 8,
+                "at": [
+                  265,
+                  63
+                ],
+                "split": 2,
+                "gap": 6
+              },
+              "tags": [
+                {
+                  "at": [
+                    594.036,
+                    318.596
+                  ],
+                  "r": 1.5,
+                  "text": "A1"
+                },
+                {
+                  "at": [
+                    626.521,
+                    318.596
+                  ],
+                  "r": 1.5,
+                  "text": "A2"
+                },
+                {
+                  "at": [
+                    594.036,
+                    351.08
+                  ],
+                  "r": 1.5,
+                  "text": "A3"
+                },
+                {
+                  "at": [
+                    626.521,
+                    351.08
+                  ],
+                  "r": 1.5,
+                  "text": "A4"
+                },
+                {
+                  "at": [
+                    411.374,
+                    139.932
+                  ],
+                  "r": 1.6,
+                  "text": "B1"
+                },
+                {
+                  "at": [
+                    485.339,
+                    139.932
+                  ],
+                  "r": 1.6,
+                  "text": "B2"
+                },
+                {
+                  "at": [
+                    507.328,
+                    139.932
+                  ],
+                  "r": 1.6,
+                  "text": "B3"
+                },
+                {
+                  "at": [
+                    574.295,
+                    139.932
+                  ],
+                  "r": 1.6,
+                  "text": "B4"
+                },
+                {
+                  "at": [
+                    641.264,
+                    139.932
+                  ],
+                  "r": 1.6,
+                  "text": "B5"
+                },
+                {
+                  "at": [
+                    507.328,
+                    203.901
+                  ],
+                  "r": 1.6,
+                  "text": "B6"
+                },
+                {
+                  "at": [
+                    574.295,
+                    203.901
+                  ],
+                  "r": 1.6,
+                  "text": "B7"
+                },
+                {
+                  "at": [
+                    641.264,
+                    203.901
+                  ],
+                  "r": 1.6,
+                  "text": "B8"
+                },
+                {
+                  "at": [
+                    411.374,
+                    213.896
+                  ],
+                  "r": 1.6,
+                  "text": "B9"
+                },
+                {
+                  "at": [
+                    485.339,
+                    213.896
+                  ],
+                  "r": 1.6,
+                  "text": "B10"
+                },
+                {
+                  "at": [
+                    507.328,
+                    221.892
+                  ],
+                  "r": 1.6,
+                  "text": "B11"
+                },
+                {
+                  "at": [
+                    574.295,
+                    221.892
+                  ],
+                  "r": 1.6,
+                  "text": "B12"
+                },
+                {
+                  "at": [
+                    641.264,
+                    221.892
+                  ],
+                  "r": 1.6,
+                  "text": "B13"
+                },
+                {
+                  "at": [
+                    411.374,
+                    285.862
+                  ],
+                  "r": 1.6,
+                  "text": "B14"
+                },
+                {
+                  "at": [
+                    485.339,
+                    285.862
+                  ],
+                  "r": 1.6,
+                  "text": "B15"
+                },
+                {
+                  "at": [
+                    507.328,
+                    285.862
+                  ],
+                  "r": 1.6,
+                  "text": "B16"
+                },
+                {
+                  "at": [
+                    574.295,
+                    285.862
+                  ],
+                  "r": 1.6,
+                  "text": "B17"
+                },
+                {
+                  "at": [
+                    641.264,
+                    285.862
+                  ],
+                  "r": 1.6,
+                  "text": "B18"
+                },
+                {
+                  "at": [
+                    267.443,
+                    302.854
+                  ],
+                  "r": 1.6,
+                  "text": "B19"
+                },
+                {
+                  "at": [
+                    333.412,
+                    302.854
+                  ],
+                  "r": 1.6,
+                  "text": "B20"
+                },
+                {
+                  "at": [
+                    351.403,
+                    302.854
+                  ],
+                  "r": 1.6,
+                  "text": "B21"
+                },
+                {
+                  "at": [
+                    418.37,
+                    302.854
+                  ],
+                  "r": 1.6,
+                  "text": "B22"
+                },
+                {
+                  "at": [
+                    485.339,
+                    302.854
+                  ],
+                  "r": 1.6,
+                  "text": "B23"
+                },
+                {
+                  "at": [
+                    534.314,
+                    302.854
+                  ],
+                  "r": 1.6,
+                  "text": "B24"
+                },
+                {
+                  "at": [
+                    576.295,
+                    302.854
+                  ],
+                  "r": 1.6,
+                  "text": "B25"
+                },
+                {
+                  "at": [
+                    267.443,
+                    366.823
+                  ],
+                  "r": 1.6,
+                  "text": "B26"
+                },
+                {
+                  "at": [
+                    333.412,
+                    366.823
+                  ],
+                  "r": 1.6,
+                  "text": "B27"
+                },
+                {
+                  "at": [
+                    351.403,
+                    366.823
+                  ],
+                  "r": 1.6,
+                  "text": "B28"
+                },
+                {
+                  "at": [
+                    418.37,
+                    366.823
+                  ],
+                  "r": 1.6,
+                  "text": "B29"
+                },
+                {
+                  "at": [
+                    485.339,
+                    366.823
+                  ],
+                  "r": 1.6,
+                  "text": "B30"
+                },
+                {
+                  "at": [
+                    534.314,
+                    366.823
+                  ],
+                  "r": 1.6,
+                  "text": "B31"
+                },
+                {
+                  "at": [
+                    576.295,
+                    366.823
+                  ],
+                  "r": 1.6,
+                  "text": "B32"
+                },
+                {
+                  "at": [
+                    257.048,
+                    125.439
+                  ],
+                  "r": 1.9,
+                  "text": "C1"
+                },
+                {
+                  "at": [
+                    651.758,
+                    125.439
+                  ],
+                  "r": 1.9,
+                  "text": "C2"
+                },
+                {
+                  "at": [
+                    257.048,
+                    249.879
+                  ],
+                  "r": 1.9,
+                  "text": "C3"
+                },
+                {
+                  "at": [
+                    651.758,
+                    249.879
+                  ],
+                  "r": 1.9,
+                  "text": "C4"
+                },
+                {
+                  "at": [
+                    259.946,
+                    374.319
+                  ],
+                  "r": 1.9,
+                  "text": "C5"
+                },
+                {
+                  "at": [
+                    449.855,
+                    374.319
+                  ],
+                  "r": 1.9,
+                  "text": "C6"
+                },
+                {
+                  "at": [
+                    651.758,
+                    374.319
+                  ],
+                  "r": 1.9,
+                  "text": "C7"
+                },
+                {
+                  "at": [
+                    300.427,
+                    334.838
+                  ],
+                  "r": 3.8,
+                  "text": "D1"
+                }
+              ],
+              "datum": {
+                "at": [
+                  237.457,
+                  384.814
+                ],
+                "len": 10
+              }
+            }
+          ],
+          "tables": [
+            {
+              "at": [
+                265,
+                63
+              ],
+              "title": "HOLE TABLE",
+              "cols": [
+                [
+                  "TAG",
+                  10,
+                  "middle"
+                ],
+                [
+                  "X",
+                  16,
+                  "end"
+                ],
+                [
+                  "Y",
+                  16,
+                  "end"
+                ],
+                [
+                  "SIZE",
+                  14,
+                  "middle"
+                ]
+              ],
+              "rows": [
+                [
+                  "A1",
+                  "356.75",
+                  "66.25",
+                  "Ø3"
+                ],
+                [
+                  "A2",
+                  "389.25",
+                  "66.25",
+                  "Ø3"
+                ],
+                [
+                  "A3",
+                  "356.75",
+                  "33.75",
+                  "Ø3"
+                ],
+                [
+                  "A4",
+                  "389.25",
+                  "33.75",
+                  "Ø3"
+                ],
+                [
+                  "B1",
+                  "174",
+                  "245",
+                  "Ø3.2"
+                ],
+                [
+                  "B2",
+                  "248",
+                  "245",
+                  "Ø3.2"
+                ],
+                [
+                  "B3",
+                  "270",
+                  "245",
+                  "Ø3.2"
+                ],
+                [
+                  "B4",
+                  "337",
+                  "245",
+                  "Ø3.2"
+                ],
+                [
+                  "B5",
+                  "404",
+                  "245",
+                  "Ø3.2"
+                ],
+                [
+                  "B6",
+                  "270",
+                  "181",
+                  "Ø3.2"
+                ],
+                [
+                  "B7",
+                  "337",
+                  "181",
+                  "Ø3.2"
+                ],
+                [
+                  "B8",
+                  "404",
+                  "181",
+                  "Ø3.2"
+                ],
+                [
+                  "B9",
+                  "174",
+                  "171",
+                  "Ø3.2"
+                ],
+                [
+                  "B10",
+                  "248",
+                  "171",
+                  "Ø3.2"
+                ],
+                [
+                  "B11",
+                  "270",
+                  "163",
+                  "Ø3.2"
+                ],
+                [
+                  "B12",
+                  "337",
+                  "163",
+                  "Ø3.2"
+                ],
+                [
+                  "B13",
+                  "404",
+                  "163",
+                  "Ø3.2"
+                ],
+                [
+                  "B14",
+                  "174",
+                  "99",
+                  "Ø3.2"
+                ],
+                [
+                  "B15",
+                  "248",
+                  "99",
+                  "Ø3.2"
+                ],
+                [
+                  "B16",
+                  "270",
+                  "99",
+                  "Ø3.2"
+                ],
+                [
+                  "B17",
+                  "337",
+                  "99",
+                  "Ø3.2"
+                ],
+                [
+                  "B18",
+                  "404",
+                  "99",
+                  "Ø3.2"
+                ]
+              ],
+              "size": 2.2
+            },
+            {
+              "at": [
+                327,
+                63
+              ],
+              "title": "",
+              "cols": [
+                [
+                  "TAG",
+                  10,
+                  "middle"
+                ],
+                [
+                  "X",
+                  16,
+                  "end"
+                ],
+                [
+                  "Y",
+                  16,
+                  "end"
+                ],
+                [
+                  "SIZE",
+                  14,
+                  "middle"
+                ]
+              ],
+              "rows": [
+                [
+                  "B19",
+                  "30",
+                  "82",
+                  "Ø3.2"
+                ],
+                [
+                  "B20",
+                  "96",
+                  "82",
+                  "Ø3.2"
+                ],
+                [
+                  "B21",
+                  "114",
+                  "82",
+                  "Ø3.2"
+                ],
+                [
+                  "B22",
+                  "181",
+                  "82",
+                  "Ø3.2"
+                ],
+                [
+                  "B23",
+                  "248",
+                  "82",
+                  "Ø3.2"
+                ],
+                [
+                  "B24",
+                  "297",
+                  "82",
+                  "Ø3.2"
+                ],
+                [
+                  "B25",
+                  "339",
+                  "82",
+                  "Ø3.2"
+                ],
+                [
+                  "B26",
+                  "30",
+                  "18",
+                  "Ø3.2"
+                ],
+                [
+                  "B27",
+                  "96",
+                  "18",
+                  "Ø3.2"
+                ],
+                [
+                  "B28",
+                  "114",
+                  "18",
+                  "Ø3.2"
+                ],
+                [
+                  "B29",
+                  "181",
+                  "18",
+                  "Ø3.2"
+                ],
+                [
+                  "B30",
+                  "248",
+                  "18",
+                  "Ø3.2"
+                ],
+                [
+                  "B31",
+                  "297",
+                  "18",
+                  "Ø3.2"
+                ],
+                [
+                  "B32",
+                  "339",
+                  "18",
+                  "Ø3.2"
+                ],
+                [
+                  "C1",
+                  "19.6",
+                  "259.5",
+                  "Ø3.8"
+                ],
+                [
+                  "C2",
+                  "414.5",
+                  "259.5",
+                  "Ø3.8"
+                ],
+                [
+                  "C3",
+                  "19.6",
+                  "135",
+                  "Ø3.8"
+                ],
+                [
+                  "C4",
+                  "414.5",
+                  "135",
+                  "Ø3.8"
+                ],
+                [
+                  "C5",
+                  "22.5",
+                  "10.5",
+                  "Ø3.8"
+                ],
+                [
+                  "C6",
+                  "212.5",
+                  "10.5",
+                  "Ø3.8"
+                ],
+                [
+                  "C7",
+                  "414.5",
+                  "10.5",
+                  "Ø3.8"
+                ],
+                [
+                  "D1",
+                  "63",
+                  "50",
+                  "Ø7.6"
+                ]
+              ],
+              "size": 2.2
+            },
+            {
+              "at": [
+                265,
+                172.16
+              ],
+              "title": "HOLE SIZES",
+              "cols": [
+                [
+                  "TAG",
+                  10,
+                  "middle"
+                ],
+                [
+                  "SIZE",
+                  30,
+                  "start"
+                ],
+                [
+                  "QTY",
+                  12,
+                  "middle"
+                ]
+              ],
+              "rows": [
+                [
+                  "A",
+                  "Ø3 THRU",
+                  "4"
+                ],
+                [
+                  "B",
+                  "Ø3.2 THRU",
+                  "32"
+                ],
+                [
+                  "C",
+                  "Ø3.8 THRU",
+                  "7"
+                ],
+                [
+                  "D",
+                  "Ø7.6 THRU",
+                  "1"
+                ]
+              ],
+              "size": 2.2
+            }
+          ]
+        }
+      ],
+      "parts": [],
+      "notes": [
+        "1. Material: acrylic, Stone, 3.00 mm. Supplier: Ponoko.",
+        "2. Cut and engrave from the production file of the same revision (sheet 2; archived with the drawing sources as Panel_B2_Production_2026-11-26.ai, at 1:1). Red = cut, blue = engrave.",
+        "3. Outline 425.00 × 270.00 mm. Holes and engraving as the production file; hole positions and sizes on sheet 3.",
+        "4. Sheet 1 at 2:5, sheet 2 at 2:3, sheet 3 at 1:2, on A3."
+      ]
+    }
+  },
+  "doc_rev": {
+    "1": "B"
+  },
+  "doc_revisions": {
+    "1": [
+      [
+        "A",
+        "Initial release (Fusion drawings)",
+        "2026-06-21",
+        "J. Kerman"
+      ],
+      [
+        "B",
+        "KC frame; base module types; hole table",
+        "2026-11-26",
+        "J. Kerman"
+      ]
+    ]
+  }
+}

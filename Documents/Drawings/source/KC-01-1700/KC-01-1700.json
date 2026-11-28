@@ -3,9 +3,9 @@
   "name": "Control Module",
   "title": "Control Module",
   "subtitle": "Kerbal Controller Mk1 · Main enclosure",
-  "rev": "C",
+  "rev": "D",
   "board_version": "V2.1",
-  "date": "2026-11-25",
+  "date": "2026-11-28",
   "status": "RELEASED",
   "created_by": "J. Rostoker",
   "approved_by": "J. Kerman",
@@ -34,13 +34,19 @@
       "Board V2.1: USB-A ports, 5-pin TP1, +5V LED, dimmer LEDs",
       "2026-11-25",
       "J. Kerman"
+    ],
+    [
+      "D",
+      "DC1 terminal, IRF4905S / 2N7002 latch, EN pull-up, F1",
+      "2026-11-28",
+      "J. Kerman"
     ]
   ],
-  "sch_pdf": "SCH_KC-01-1701_Control_Module_2026-11-25.pdf",
-  "gerber_zip": "Gerber_KC-01-1702_Control_Module_PCB_2026-11-25.zip",
-  "bom_csv": "BOM_KC-01-1702_Control_Module_PCB_2026-11-25.csv",
-  "pnp_csv": "PickAndPlace_KC-01-1702_Control_Module_PCB_2026-11-25.csv",
-  "assy_pdf": "Fusion_KC-01-1700_Control_Module_2026-11-25.pdf",
+  "sch_pdf": "SCH_KC-01-1701_Control_Module_2026-11-28.pdf",
+  "gerber_zip": "Gerber_KC-01-1702_Control_Module_PCB_2026-11-28.zip",
+  "bom_csv": "BOM_KC-01-1702_Control_Module_PCB_2026-11-28.csv",
+  "pnp_csv": "PickAndPlace_KC-01-1702_Control_Module_PCB_2026-11-28.csv",
+  "assy_pdf": "Fusion_KC-01-1700_Control_Module_2026-11-28.pdf",
   "doc_title": {
     "0": "Control Module Complete"
   },
@@ -61,7 +67,7 @@
                 900.8,
                 248.8
               ],
-              "label": "Power input, soft-latch power switch (Q1, Q2), current and voltage monitor (U3), status LEDs and test port (TP1)"
+              "label": "Power input (DC1), soft-latch power switch (Q1, Q2) with power button header (H1, lamp fuse F1), current and voltage monitor (U3), status LEDs and test port (TP1)"
             }
           ]
         ],
@@ -106,7 +112,7 @@
       ]
     },
     {
-      "scale": 0.48,
+      "scale": 0.465,
       "rows": [
         [
           [
@@ -381,7 +387,7 @@
     "4. Fabricate to IPC-6012 Class 2. Electrical test 100 %.",
     "5. Dimensions in mm. Tolerances unless noted: outline ±0.2, finished holes ±0.08.",
     "6. Fabricate from the Gerber and drill files of the same revision as this drawing.",
-    "7. Plated slots for the USB, USB-C and DC jack tabs are routed; sizes in the drill chart (sheet 2).",
+    "7. Plated slots for the USB and USB-C tabs are routed; sizes in the drill chart (sheet 2).",
     "8. No controlled impedance, castellations, edge plating or gold fingers."
   ],
   "bom_notes": [
@@ -422,10 +428,11 @@
           ],
           "at": [
             18.0,
-            38.6
+            45.6
           ],
           "k": 1.66667,
-          "label": "LEFT VIEW"
+          "label": "LEFT VIEW",
+          "line_scale": 0.35
         },
         {
           "page": 1,
@@ -437,10 +444,11 @@
           ],
           "at": [
             51.33,
-            38.6
+            45.6
           ],
           "k": 1.66667,
-          "label": "TOP VIEW"
+          "label": "TOP VIEW",
+          "line_scale": 0.35
         },
         {
           "page": 1,
@@ -452,10 +460,11 @@
           ],
           "at": [
             51.33,
-            140.43
+            147.43
           ],
           "k": 1.66667,
-          "label": "FRONT VIEW"
+          "label": "FRONT VIEW",
+          "line_scale": 0.35
         },
         {
           "page": 1,
@@ -471,7 +480,8 @@
           ],
           "k": 0.4306,
           "label": "ISOMETRIC VIEW",
-          "sublabel": "Not to scale"
+          "sublabel": "Not to scale",
+          "line_scale": 0.35
         }
       ]
     },
@@ -482,16 +492,17 @@
         {
           "page": 2,
           "src": [
-            95.0,
+            86.0,
             68.0,
             314.0,
             208.0
           ],
           "at": [
-            90.0,
+            85.0,
             78.0
           ],
-          "k": 1.05
+          "k": 1.05,
+          "line_scale": 0.35
         }
       ]
     }

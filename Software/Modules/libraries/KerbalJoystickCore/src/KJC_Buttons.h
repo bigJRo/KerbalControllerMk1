@@ -1,6 +1,6 @@
 /**
  * @file        KJC_Buttons.h
- * @version     2.3.0
+ * @version     2.4.0
  * @date        2026-04-08
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker

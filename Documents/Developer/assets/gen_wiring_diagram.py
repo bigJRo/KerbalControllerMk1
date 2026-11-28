@@ -195,7 +195,7 @@ def build():
         rect(x0, y - 20, x1, y + 20, fill="#ffffff", stroke="#8d6e63", sw=1.2, r=4)
         lines((x0 + x1) / 2, y - 3, rows, size=10.5, gap=13)
 
-    rp(30, 174, 460, ["12 V DC IN", ("2.5 mm barrel, ≥10 A", {"fill": "#6d4c41"})])
+    rp(30, 174, 460, ["12 V DC IN", ("5.5 × 2.1 mm barrel, ≥10 A", {"fill": "#6d4c41"})])
     rp(30, 174, 512, ["USB-C · HOST PC", ("panel mount", {"fill": "#6d4c41"})])
     rp(30, 174, 564, ["USB-C · EXPANSION", ("panel mount, reserved", {"fill": "#6d4c41"})])
     rp(30, 174, 616, ["FAN 1", ("120 mm PWM, tach", {"fill": "#6d4c41"})])
@@ -220,8 +220,8 @@ def build():
     item(40, 112, 190, 172, ["POWER button", "momentary", "(on / hold 3 s off)"], size=11)
     board(230, 100, 450, 200, "ANNUNCIATOR", ["0x10 · 7\" TFT Display Driver", "KC-01-1910 (Teensy 4.1)"], ty=24)
     # Annunciator audio: SPKR1 on the PAM8302A master-alarm amplifier, SPKR2 on the DFPlayer
-    for x, n, rows in ((274, "SPKR1", ["SPEAKER 1", "alarm tones", "8 \u03a9"]),
-                       (354, "SPKR2", ["SPEAKER 2", "GPWS voice", "8 \u03a9"])):
+    for x, n, rows in ((274, "SPKR1", ["SPEAKER 1", "alarm tones", "4 \u03a9"]),
+                       (354, "SPKR2", ["SPEAKER 2", "GPWS voice", "4 \u03a9"])):
         wire([(x, 208), (x, 286)], "spk")
         tab(x, 200, n, "bottom")
         ctag(x, 246, ["2-pin", TBD], "spk")

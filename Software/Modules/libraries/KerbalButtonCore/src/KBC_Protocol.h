@@ -1,7 +1,7 @@
 /**
  * @file        KBC_Protocol.h
- * @version     2.4.0
- * @date        2026-06-28
+ * @version     2.5.1
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -129,7 +129,7 @@
  */
 #define KBC_LED_PAYLOAD_SIZE        KMC_LED_PAYLOAD_SIZE
 
-/** @brief Identity response packet size in bytes. Alias for KMC_IDENTITY_SIZE. */
+/** @brief Identity response packet size in bytes (8). Alias for KMC_IDENTITY_SIZE. */
 #define KBC_IDENTITY_PACKET_SIZE    KMC_IDENTITY_SIZE
 
 /** @brief Total bytes on wire for a CMD_SET_LED_STATE transaction. */
@@ -189,13 +189,20 @@
 
 /**
  * @struct KBCIdentityPacket
- * @brief  Identity response packet (target → controller, 4 bytes).
+ * @brief  Identity response packet (target → controller, 8 bytes,
+ *         I2C spec §6): the library version at bytes 1/2/4, the module
+ *         sketch's version at bytes 5..7. Each addition was appended, so
+ *         the capability flags stay at byte 3.
  */
 struct KBCIdentityPacket {
     uint8_t typeId;          ///< Module Type ID (KBC_TYPE_*)
-    uint8_t firmwareMajor;   ///< Firmware version major
-    uint8_t firmwareMinor;   ///< Firmware version minor
+    uint8_t firmwareMajor;   ///< Library version major
+    uint8_t firmwareMinor;   ///< Library version minor
     uint8_t capabilityFlags; ///< Capability flags bitmask (KBC_CAP_*)
+    uint8_t firmwarePatch;   ///< Library version patch
+    uint8_t sketchMajor;     ///< Sketch version major (KMC_SKETCH_VERSION_UNKNOWN: not set)
+    uint8_t sketchMinor;     ///< Sketch version minor
+    uint8_t sketchPatch;     ///< Sketch version patch
 };
 
 // ============================================================
@@ -223,7 +230,7 @@ inline void KBC_ledPackSet(uint8_t* payload, uint8_t button, uint8_t state) {
 }
 
 /**
- * @brief  Serialize a KBCIdentityPacket into a 4-byte array for transmission.
+ * @brief  Serialize a KBCIdentityPacket into an 8-byte array for transmission.
  * @param  pkt  Source packet
  * @param  buf  Destination byte array (must be at least KBC_IDENTITY_PACKET_SIZE bytes)
  */
@@ -232,6 +239,10 @@ inline void KBC_serializeIdentityPacket(const KBCIdentityPacket* pkt, uint8_t* b
     buf[1] = pkt->firmwareMajor;
     buf[2] = pkt->firmwareMinor;
     buf[3] = pkt->capabilityFlags;
+    buf[4] = pkt->firmwarePatch;
+    buf[5] = pkt->sketchMajor;
+    buf[6] = pkt->sketchMinor;
+    buf[7] = pkt->sketchPatch;
 }
 
 #endif // KBC_PROTOCOL_H

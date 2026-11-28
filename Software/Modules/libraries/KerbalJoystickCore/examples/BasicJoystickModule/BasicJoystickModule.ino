@@ -1,7 +1,7 @@
 /**
  * @file        BasicJoystickModule.ino
- * @version     2.0.0
- * @date        2026-04-08
+ * @version     2.1.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -9,8 +9,9 @@
  * @brief       BasicJoystickModule — minimal KerbalJoystickCore example.
  *
  *              Demonstrates the simplest possible joystick module
- *              configuration. Set the I2C address, Type ID, and
- *              button colors for the specific module being flashed.
+ *              configuration. Set the I2C address, Type ID, sketch
+ *              version and button colors for the specific module being
+ *              flashed.
  *
  *              Do not touch the joystick during the first ~80ms
  *              after power-on — calibration reads center position
@@ -20,6 +21,7 @@
  *              https://www.gnu.org/licenses/gpl-3.0.html
  *
  * @note        Hardware: KC-01-1831/1832 v1.0 (ATtiny816)
+ *              Library:  KerbalJoystickCore v2.4.0 or later
  *              IDE settings:
  *                Board:             ATtiny816 (megaTinyCore)
  *                Clock:             10 MHz or higher
@@ -38,6 +40,13 @@
 
 /** @brief Module Type ID. 0x09 = Rotation, 0x0A = Translation. */
 #define MODULE_TYPE_ID  0x09
+
+/** @brief This sketch's own version, MAJOR.MINOR.PATCH, reported at identity
+ *         bytes 5..7 next to the KerbalJoystickCore version (I2C spec §6). Keep
+ *         @version in step with it. */
+#define SKETCH_VERSION_MAJOR  2
+#define SKETCH_VERSION_MINOR  1
+#define SKETCH_VERSION_PATCH  0
 
 // ============================================================
 //  NeoPixel button active colors
@@ -59,6 +68,9 @@ const RGBColor activeColors[KJC_NEO_COUNT] = {
 // ============================================================
 
 void setup() {
+    // Report this sketch's version in the identity, next to the library's.
+    kjcSetSketchVersion(SKETCH_VERSION_MAJOR, SKETCH_VERSION_MINOR, SKETCH_VERSION_PATCH);
+
     // Wire.begin() must be called before kjcBegin()
     Wire.begin(I2C_ADDRESS);
 

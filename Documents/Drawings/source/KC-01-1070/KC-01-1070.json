@@ -1,0 +1,498 @@
+{
+  "base": "KC-01-107",
+  "name": "Internal Brace",
+  "title": "Internal Brace",
+  "subtitle": "Kerbal Controller Mk1 · Main enclosure",
+  "rev": "A",
+  "board_version": "Brace",
+  "version_label": "Unit",
+  "date": "2026-11-26",
+  "status": "RELEASED",
+  "created_by": "J. Rostoker",
+  "approved_by": "J. Kerman",
+  "package_docs": "01",
+  "doc_types": {
+    "0": [
+      "ASSY",
+      "Assembly Drawing"
+    ],
+    "1": [
+      "PART",
+      "Part Control Drawing",
+      ""
+    ]
+  },
+  "doc_title": {
+    "0": "Internal Brace Assembly",
+    "1": "Internal Brace"
+  },
+  "doc_name": {
+    "0": "Internal Brace Assembly",
+    "1": "Internal Brace"
+  },
+  "doc_status": {
+    "0": "RELEASED",
+    "1": "RELEASED"
+  },
+  "revisions": [
+    [
+      "-",
+      "Initial release (Fusion drawing)",
+      "2025-05-26",
+      "J. Kerman"
+    ],
+    [
+      "A",
+      "KC frame; screw description corrected to 6-32",
+      "2026-11-26",
+      "J. Kerman"
+    ]
+  ],
+  "doc_rev": {
+    "1": "D"
+  },
+  "doc_revisions": {
+    "1": [
+      [
+        "C",
+        "Fusion drawing (revisions A and B in Fusion)",
+        "2022-09-27",
+        "J. Kerman"
+      ],
+      [
+        "D",
+        "KC frame; notes and hole table re-set",
+        "2026-11-26",
+        "J. Kerman"
+      ]
+    ]
+  },
+  "view_docs": {
+    "0": {
+      "pdf": "Fusion_KC-01-1070_Internal_Brace_Assembly_2025-05-26.pdf",
+      "line_scale": 0.35,
+      "sheets": [
+        {
+          "scale": 0.5,
+          "views": [
+            {
+              "pdf": "Fusion_KC-01-1070_Internal_Brace_Assembly_2025-05-26.pdf",
+              "page": 1,
+              "src": [
+                205,
+                30,
+                365,
+                201
+              ],
+              "k": 1.0,
+              "at": [
+                243,
+                44
+              ]
+            },
+            {
+              "pdf": "Fusion_KC-01-1070_Internal_Brace_Assembly_2025-05-26.pdf",
+              "page": 1,
+              "src": [
+                101,
+                30,
+                133,
+                138
+              ],
+              "k": 1.0,
+              "at": [
+                179.2,
+                44
+              ]
+            },
+            {
+              "pdf": "Fusion_KC-01-1070_Internal_Brace_Assembly_2025-05-26.pdf",
+              "page": 1,
+              "src": [
+                41.8,
+                128.5,
+                161.1,
+                277.8
+              ],
+              "k": 0.95,
+              "at": [
+                24.2,
+                53.0
+              ],
+              "clip": [
+                [
+                  40,
+                  126
+                ],
+                [
+                  98,
+                  126
+                ],
+                [
+                  98,
+                  140
+                ],
+                [
+                  165,
+                  140
+                ],
+                [
+                  165,
+                  280
+                ],
+                [
+                  40,
+                  280
+                ]
+              ],
+              "label": "ISOMETRIC VIEW",
+              "sublabel": "Not to scale"
+            }
+          ],
+          "notes": true,
+          "texts": [
+            {
+              "at": [
+                194.2,
+                155.0
+              ],
+              "text": "SIDE VIEW",
+              "size": 2.8
+            },
+            {
+              "at": [
+                326.0,
+                155.0
+              ],
+              "text": "FRONT VIEW",
+              "size": 2.8
+            },
+            {
+              "at": [
+                326.0,
+                218.0
+              ],
+              "text": "TOP VIEW",
+              "size": 2.8
+            }
+          ]
+        },
+        {
+          "scale": null,
+          "parts_list": true,
+          "views": [
+            {
+              "pdf": "Fusion_KC-01-1070_Internal_Brace_Assembly_2025-05-26.pdf",
+              "page": 2,
+              "src": [
+                64,
+                99,
+                170,
+                218
+              ],
+              "k": 1.0,
+              "at": [
+                40,
+                100
+              ],
+              "label": "ISOMETRIC VIEW",
+              "sublabel": "Not to scale"
+            },
+            {
+              "pdf": "Fusion_KC-01-1070_Internal_Brace_Assembly_2025-05-26.pdf",
+              "page": 2,
+              "src": [
+                226,
+                99,
+                352,
+                174
+              ],
+              "k": 1.0,
+              "at": [
+                210,
+                112
+              ],
+              "label": "FRONT VIEW"
+            }
+          ]
+        }
+      ],
+      "parts": [
+        {
+          "qty": 1,
+          "pn": "KC-01-1071",
+          "name": "Internal Brace",
+          "desc": "Cast acrylic (Chemcast), clear, 24.00 mm; Mfr: TAP Plastics"
+        },
+        {
+          "qty": 14,
+          "pn": "36-617-ND",
+          "name": "Bracket - Keystone 617",
+          "desc": "Keystone 617 mounting bracket, short L, 0.165″ (4.19 mm), 6-32, steel, tin plated"
+        },
+        {
+          "qty": 7,
+          "pn": "92141A008",
+          "name": "Washer - #6",
+          "desc": "18-8 stainless steel washer for #6 screw, 0.156″ ID, 0.312″ OD"
+        },
+        {
+          "qty": 7,
+          "pn": "91772A201",
+          "name": "Screw - 6-32 - 1-1/4in",
+          "desc": "Passivated 18-8 stainless steel pan head Phillips screw, 6-32 thread, 1-1/4″ long"
+        },
+        {
+          "qty": 7,
+          "pn": "91841A007",
+          "name": "Nut - 6-32",
+          "desc": "18-8 stainless steel hex nut, 6-32 thread"
+        }
+      ],
+      "notes": [
+        "1. Item 1 is to its own drawing (KC-01-1071).",
+        "2. At each of the brace's seven Ø4.76 holes, a bracket (item 2) sits on each face; one screw (item 4) passes through bracket, brace and bracket and takes a washer (item 3) and nut (item 5).",
+        "3. The brackets fix the brace in the box (acrylic box KC-01-1010); those screws are on the top-level assembly.",
+        "4. Sheet 1 at 1:2 (isometric view not to scale); sheet 2 not to scale. Parts list on sheet 2."
+      ]
+    },
+    "1": {
+      "pdf": "Fusion_KC-01-1071_Internal_Brace_2022-09-27.pdf",
+      "line_scale": 0.35,
+      "sheets": [
+        {
+          "scale": 0.4,
+          "views": [
+            {
+              "pdf": "Fusion_KC-01-1071_Internal_Brace_2022-09-27.pdf",
+              "page": 1,
+              "src": [
+                98,
+                42,
+                382,
+                232
+              ],
+              "k": 0.8,
+              "at": [
+                175,
+                44
+              ],
+              "clip": [
+                [
+                  98,
+                  42
+                ],
+                [
+                  382,
+                  42
+                ],
+                [
+                  382,
+                  232
+                ],
+                [
+                  158,
+                  232
+                ],
+                [
+                  132,
+                  196
+                ],
+                [
+                  98,
+                  165
+                ]
+              ]
+            },
+            {
+              "pdf": "Fusion_KC-01-1071_Internal_Brace_2022-09-27.pdf",
+              "page": 1,
+              "src": [
+                40.3,
+                130.8,
+                155.2,
+                280.1
+              ],
+              "k": 0.95,
+              "at": [
+                50.8,
+                47.8
+              ],
+              "clip": [
+                [
+                  38,
+                  128
+                ],
+                [
+                  60,
+                  128
+                ],
+                [
+                  98,
+                  167
+                ],
+                [
+                  132,
+                  198
+                ],
+                [
+                  158,
+                  234
+                ],
+                [
+                  158,
+                  282
+                ],
+                [
+                  38,
+                  282
+                ]
+              ],
+              "label": "ISOMETRIC VIEW",
+              "sublabel": "Not to scale"
+            }
+          ],
+          "notes": true,
+          "texts": [
+            {
+              "at": [
+                199.0,
+                144.8
+              ],
+              "text": "SIDE VIEW",
+              "size": 2.8
+            },
+            {
+              "at": [
+                314.2,
+                161.6
+              ],
+              "text": "FRONT VIEW",
+              "size": 2.8
+            },
+            {
+              "at": [
+                325.4,
+                197.6
+              ],
+              "text": "TOP VIEW",
+              "size": 2.8
+            }
+          ]
+        },
+        {
+          "scale": 0.6,
+          "views": [
+            {
+              "pdf": "Fusion_KC-01-1071_Internal_Brace_2022-09-27.pdf",
+              "page": 2,
+              "src": [
+                38,
+                73,
+                266,
+                227
+              ],
+              "k": 1.2,
+              "at": [
+                39.7,
+                37.2
+              ],
+              "label": "HOLE LOCATIONS",
+              "masks": [
+                [
+                  255,
+                  71,
+                  267,
+                  81
+                ]
+              ]
+            }
+          ],
+          "tables": [
+            {
+              "at": [
+                321.8,
+                48.4
+              ],
+              "title": "HOLE TABLE",
+              "cols": [
+                [
+                  "TAG",
+                  10,
+                  "middle"
+                ],
+                [
+                  "X",
+                  16,
+                  "end"
+                ],
+                [
+                  "Y",
+                  16,
+                  "end"
+                ],
+                [
+                  "SIZE",
+                  18,
+                  "middle"
+                ]
+              ],
+              "rows": [
+                [
+                  "A1",
+                  "8.40",
+                  "180.00",
+                  "Ø4.76"
+                ],
+                [
+                  "A2",
+                  "20.00",
+                  "8.40",
+                  "Ø4.76"
+                ],
+                [
+                  "A3",
+                  "67.89",
+                  "185.18",
+                  "Ø4.76"
+                ],
+                [
+                  "A4",
+                  "114.99",
+                  "103.60",
+                  "Ø4.76"
+                ],
+                [
+                  "A5",
+                  "140.50",
+                  "88.60",
+                  "Ø4.76"
+                ],
+                [
+                  "A6",
+                  "240.00",
+                  "8.40",
+                  "Ø4.76"
+                ],
+                [
+                  "A7",
+                  "265.00",
+                  "88.60",
+                  "Ø4.76"
+                ]
+              ],
+              "size": 2.2
+            }
+          ]
+        }
+      ],
+      "parts": [],
+      "notes": [
+        "1. Material: cast acrylic (Chemcast), clear, 24.00 mm. Supplier: TAP Plastics.",
+        "2. Outline 291.00 × 200.00 × 24.00 mm (sheet 1). Corners R4.76 as marked (sheet 2).",
+        "3. Holes A1 to A7: Ø4.76 through the 24.00 mm thickness, for the bracket screws. Datum: lower-left corner, X right, Y up.",
+        "4. Sheet 1 at 2:5, sheet 2 at 3:5, on A3; isometric view not to scale."
+      ]
+    }
+  }
+}

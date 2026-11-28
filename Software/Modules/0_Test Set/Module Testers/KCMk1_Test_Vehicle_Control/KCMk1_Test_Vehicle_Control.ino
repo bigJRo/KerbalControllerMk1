@@ -1,7 +1,7 @@
 /**
  * @file        KCMk1_Test_Vehicle_Control.ino
- * @version     1.0.0
- * @date        2026-11-08
+ * @version     1.1.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1 — Module Tester
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -14,7 +14,7 @@
  *              are not connected. 24-input build: 9-byte packet. Reports
  *              EXTENDED_STATES (caps 0x01): WARNING, ALERT, ARMED, PARTIAL_DEPLOY
  *              and CUT are checked as well.
- *              KerbalButtonCore 2.4 firmware, identity fw 2.4, caps 0x01.
+ *              KerbalButtonCore 2.5.1 firmware, identity fw 2.3.0 / lib 2.5.1 (sketch / library), caps 0x01.
  *
  *              Steps: identity, boot handshake, enable + INT, button walk, switch walk,
  *              LED walk, LED states, brightness, bulb test, lifecycle, supply current. Results show on
@@ -97,7 +97,8 @@ static const KtcStep STEPS[] = {
 static const KtcModuleDef MODULE = {
     "Vehicle Control", "KC-01-1811/1812 wide button board",
     KMC_TYPE_VEHICLE_CONTROL, 0x24, KMC_BUTTON24_PACKET_SIZE,
-    KTC_KBC_FW_MAJOR, KTC_KBC_FW_MINOR, 0x01,
+    KTC_KBC_FW_MAJOR, KTC_KBC_FW_MINOR, KTC_KBC_FW_PATCH, 0x01,
+    2, 3, 0,                           // Vehicle Control sketch 2.3.0 (SKETCH_VERSION_* in the module sketch)
     STEPS, sizeof(STEPS) / sizeof(STEPS[0]),
     ktcKbcCleanup, ktcKbcLive24,
 };

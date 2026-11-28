@@ -1,12 +1,12 @@
 # KCMk1_Time_Control
 
 **Module:** Time Control  
-**Version:** 1.0  
-**Date:** 2026-04-07  
+**Version:** 2.1  
+**Date:** 2026-11-26  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1802 Button Module Base v1.1  
-**Library:** KerbalButtonCore v2.0.0  
+**Library:** KerbalButtonCore v2.5.0 or later  
 
 ---
 
@@ -27,6 +27,7 @@ This module uses 12 NeoPixel RGB button positions (KBC indices 0-11). Inputs B12
 | I2C Address | `0x25` |
 | Module Type ID | `0x06` (KBC_TYPE_TIME_CONTROL) |
 | Capability Flags | `0x00` (core states only) |
+| Identity | 8 bytes (I2C spec §6): the KerbalButtonCore version, 2.5.1, at bytes 1/2/4 and this sketch's own version, 2.1.0, at bytes 5–7 (`SKETCH_VERSION_*` in the sketch, passed with `kbc.setSketchVersion()`) |
 | Extended States | No |
 | Populated Buttons | 12 (KBC indices 0-11) |
 | Discrete LEDs | None |
@@ -174,3 +175,4 @@ Two buttons per byte, high nibble first, values 0x0-0x2
 | Version | Date | Notes |
 |---|---|---|
 | 1.0 | 2026-04-07 | Initial release |
+| 2.1 | 2026-11-26 | The identity reports this sketch's own version, 2.1.0, at bytes 5–7 next to the KerbalButtonCore version (I2C spec v2.22 §6), so a change to the sketch alone can be seen from the bus: `SKETCH_VERSION_*` constants added, passed to the library with `kbc.setSketchVersion()` in `setup()`. The README had stayed at 1.0 while the sketch header read 2.0.0 (the v2 protocol update); 2.1.0 follows the header. Needs KerbalButtonCore 2.5.0 and KerbalModuleCommon 1.9.0. |

@@ -1,0 +1,1435 @@
+{
+  "base": "KC-01-101",
+  "name": "Acrylic Box",
+  "title": "Acrylic Box",
+  "subtitle": "Kerbal Controller Mk1 · Main enclosure",
+  "rev": "A",
+  "board_version": "Box",
+  "version_label": "Unit",
+  "date": "2026-11-26",
+  "status": "RELEASED",
+  "created_by": "J. Rostoker",
+  "approved_by": "J. Kerman",
+  "package_docs": "01234",
+  "doc_types": {
+    "0": [
+      "ASSY",
+      "Assembly Drawing"
+    ],
+    "1": [
+      "PART",
+      "Part Control Drawing",
+      ""
+    ],
+    "2": [
+      "PART",
+      "Part Control Drawing",
+      ""
+    ],
+    "3": [
+      "PART",
+      "Part Control Drawing",
+      ""
+    ],
+    "4": [
+      "PART",
+      "Part Control Drawing",
+      ""
+    ]
+  },
+  "doc_title": {
+    "0": "Acrylic Box",
+    "1": "Front Plate",
+    "2": "Side Panel",
+    "3": "Bottom Plate",
+    "4": "Back Panel"
+  },
+  "doc_name": {
+    "0": "Acrylic Box",
+    "1": "Front Plate",
+    "2": "Side Panel",
+    "3": "Bottom Plate",
+    "4": "Back Panel"
+  },
+  "doc_status": {
+    "0": "RELEASED",
+    "1": "RELEASED",
+    "2": "RELEASED",
+    "3": "RELEASED",
+    "4": "RELEASED"
+  },
+  "revisions": [
+    [
+      "-",
+      "Initial release (Fusion drawings)",
+      "2022-09-18",
+      "J. Kerman"
+    ],
+    [
+      "A",
+      "KC frame; part names and notes brought up to date",
+      "2026-11-26",
+      "J. Kerman"
+    ]
+  ],
+  "doc_revisions": {
+    "1": [
+      [
+        "-",
+        "Initial release (Fusion drawings)",
+        "2022-09-17",
+        "J. Kerman"
+      ],
+      [
+        "A",
+        "KC frame; part names and notes brought up to date",
+        "2026-11-26",
+        "J. Kerman"
+      ]
+    ]
+  },
+  "view_docs": {
+    "0": {
+      "pdf": "Fusion_KC-01-1010_Acrylic_Box_2022-09-18.pdf",
+      "line_scale": 0.35,
+      "sheets": [
+        {
+          "scale": null,
+          "parts_list": {
+            "at": [
+              222,
+              50
+            ],
+            "w": 182,
+            "cols": [
+              9,
+              9,
+              27,
+              40,
+              97
+            ],
+            "size": 2.3
+          },
+          "views": [
+            {
+              "pdf": "Fusion_KC-01-1010_Acrylic_Box_2022-09-18.pdf",
+              "page": 1,
+              "src": [
+                123.9,
+                60.9,
+                356.0,
+                240.0
+              ],
+              "k": 1.04,
+              "at": [
+                28.8,
+                22.5
+              ],
+              "clip": [
+                [
+                  122,
+                  58
+                ],
+                [
+                  356,
+                  58
+                ],
+                [
+                  356,
+                  240
+                ],
+                [
+                  153,
+                  240
+                ],
+                [
+                  153,
+                  201
+                ],
+                [
+                  136,
+                  201
+                ],
+                [
+                  136,
+                  180
+                ],
+                [
+                  122,
+                  180
+                ]
+              ],
+              "label": "ASSEMBLY",
+              "sublabel": "Isometric view, not to scale"
+            }
+          ],
+          "notes": true
+        },
+        {
+          "scale": 0.2,
+          "views": [
+            {
+              "pdf": "Fusion_KC-01-1010_Acrylic_Box_2022-09-18.pdf",
+              "page": 2,
+              "src": [
+                33,
+                31,
+                394,
+                250
+              ],
+              "k": 0.8,
+              "at": [
+                65.5,
+                44
+              ],
+              "masks": [
+                [
+                  156,
+                  94,
+                  206,
+                  106.4
+                ],
+                [
+                  73,
+                  101.5,
+                  126,
+                  112.9
+                ]
+              ],
+              "clip": [
+                [
+                  33,
+                  31
+                ],
+                [
+                  394,
+                  31
+                ],
+                [
+                  394,
+                  235
+                ],
+                [
+                  228,
+                  235
+                ],
+                [
+                  228,
+                  250
+                ],
+                [
+                  33,
+                  250
+                ]
+              ]
+            }
+          ],
+          "texts": [
+            {
+              "at": [
+                234.3,
+                92.8
+              ],
+              "text": "FRONT VIEW",
+              "size": 2.8
+            },
+            {
+              "at": [
+                234.3,
+                209.6
+              ],
+              "text": "TOP VIEW",
+              "size": 2.8
+            },
+            {
+              "at": [
+                97.5,
+                221.6
+              ],
+              "text": "SIDE VIEW",
+              "size": 2.8
+            }
+          ]
+        }
+      ],
+      "parts": [
+        {
+          "qty": 1,
+          "pn": "KC-01-1013",
+          "name": "Bottom Plate",
+          "desc": "Acrylic, opaque black, 6.00 mm; Mfr: TAP Plastics"
+        },
+        {
+          "qty": 1,
+          "pn": "KC-01-1011",
+          "name": "Front Plate",
+          "desc": "Acrylic, opaque black, 6.00 mm; Mfr: TAP Plastics"
+        },
+        {
+          "qty": 2,
+          "pn": "KC-01-1012",
+          "name": "Side Panel",
+          "desc": "Acrylic, opaque black, 6.00 mm; Mfr: TAP Plastics"
+        },
+        {
+          "qty": 1,
+          "pn": "KC-01-1014",
+          "name": "Back Panel",
+          "desc": "Acrylic, opaque black, 6.00 mm; Mfr: TAP Plastics"
+        }
+      ],
+      "notes": [
+        "1. Glue all joints with acrylic cement. Finish the exposed edges.",
+        "2. Items 1 to 4 are cut by TAP Plastics to their own drawings (KC-01-1011 to KC-01-1014).",
+        "3. The top cover (KC-01-1060) and the internal brace (KC-01-1070) are screwed in, not glued; they and the panels are on the top-level assembly.",
+        "4. Sheet 1 not to scale; sheet 2 at 1:5, on A3."
+      ]
+    },
+    "1": {
+      "pdf": "Fusion_KC-01-1011_Front_Plate_2022-09-17.pdf",
+      "line_scale": 0.35,
+      "sheets": [
+        {
+          "scale": 0.3333333333333333,
+          "views": [
+            {
+              "page": 1,
+              "src": [
+                24,
+                60,
+                404,
+                162
+              ],
+              "k": 1.0,
+              "at": [
+                18,
+                46
+              ],
+              "clip": [
+                [
+                  24,
+                  60
+                ],
+                [
+                  404,
+                  60
+                ],
+                [
+                  404,
+                  162
+                ],
+                [
+                  100,
+                  162
+                ],
+                [
+                  100,
+                  137
+                ],
+                [
+                  24,
+                  137
+                ]
+              ],
+              "pdf": "Fusion_KC-01-1011_Front_Plate_2022-09-17.pdf"
+            },
+            {
+              "page": 1,
+              "src": [
+                22,
+                136,
+                230,
+                285
+              ],
+              "k": 0.42,
+              "at": [
+                22,
+                152
+              ],
+              "clip": [
+                [
+                  22,
+                  136
+                ],
+                [
+                  40,
+                  136
+                ],
+                [
+                  230,
+                  263
+                ],
+                [
+                  230,
+                  285
+                ],
+                [
+                  200,
+                  285
+                ],
+                [
+                  22,
+                  172
+                ]
+              ],
+              "label": "ISOMETRIC VIEW",
+              "sublabel": "Not to scale",
+              "pdf": "Fusion_KC-01-1011_Front_Plate_2022-09-17.pdf"
+            }
+          ],
+          "notes": true,
+          "texts": [
+            {
+              "at": [
+                241.0,
+                132.0
+              ],
+              "text": "FRONT VIEW",
+              "size": 2.8
+            },
+            {
+              "at": [
+                49.0,
+                128.0
+              ],
+              "text": "SIDE VIEW",
+              "size": 2.8
+            },
+            {
+              "at": [
+                241.0,
+                152.0
+              ],
+              "text": "TOP VIEW",
+              "size": 2.8
+            }
+          ],
+          "tables": [
+            {
+              "at": [
+                255,
+                170
+              ],
+              "title": "HOLE TABLE",
+              "cols": [
+                [
+                  "TAG",
+                  10,
+                  "middle"
+                ],
+                [
+                  "X",
+                  16,
+                  "end"
+                ],
+                [
+                  "Y",
+                  16,
+                  "end"
+                ],
+                [
+                  "SIZE",
+                  18,
+                  "middle"
+                ]
+              ],
+              "rows": [
+                [
+                  "A1",
+                  "212.50",
+                  "86.50",
+                  "Ø4.76"
+                ],
+                [
+                  "A2",
+                  "402.50",
+                  "86.50",
+                  "Ø4.76"
+                ],
+                [
+                  "A3",
+                  "447.60",
+                  "86.50",
+                  "Ø4.76"
+                ],
+                [
+                  "A4",
+                  "637.50",
+                  "86.50",
+                  "Ø4.76"
+                ]
+              ],
+              "size": 2.2
+            }
+          ]
+        }
+      ],
+      "parts": [],
+      "notes": [
+        "1. Material: acrylic, opaque black, 6.00 mm. Supplier: TAP Plastics.",
+        "2. Outline 850.00 × 100.00 × 6.00 mm. Edges machined (routed) for gluing or polished, as marked.",
+        "3. Holes A1 to A4: Ø4.76 through, for the enclosure brackets. Datum: lower-left corner, X right, Y up.",
+        "4. Views at 1:3 on A3; isometric view not to scale."
+      ]
+    },
+    "2": {
+      "pdf": "Fusion_KC-01-1012_Side_Panel_2022-09-18.pdf",
+      "line_scale": 0.35,
+      "sheets": [
+        {
+          "scale": 0.4,
+          "views": [
+            {
+              "page": 1,
+              "src": [
+                44,
+                49,
+                394,
+                226
+              ],
+              "k": 0.8,
+              "at": [
+                124,
+                44
+              ],
+              "clip": [
+                [
+                  44,
+                  49
+                ],
+                [
+                  394,
+                  49
+                ],
+                [
+                  394,
+                  226
+                ],
+                [
+                  160,
+                  226
+                ],
+                [
+                  160,
+                  172
+                ],
+                [
+                  88,
+                  172
+                ],
+                [
+                  88,
+                  62
+                ],
+                [
+                  44,
+                  62
+                ]
+              ],
+              "pdf": "Fusion_KC-01-1012_Side_Panel_2022-09-18.pdf"
+            },
+            {
+              "page": 1,
+              "src": [
+                25.5,
+                114.2,
+                176.0,
+                284.5
+              ],
+              "k": 0.9,
+              "at": [
+                49.6,
+                79.0
+              ],
+              "clip": [
+                [
+                  22,
+                  111
+                ],
+                [
+                  60,
+                  111
+                ],
+                [
+                  88,
+                  176
+                ],
+                [
+                  160,
+                  226
+                ],
+                [
+                  178,
+                  236
+                ],
+                [
+                  178,
+                  285
+                ],
+                [
+                  22,
+                  285
+                ]
+              ],
+              "label": "ISOMETRIC VIEW",
+              "sublabel": "Not to scale",
+              "pdf": "Fusion_KC-01-1012_Side_Panel_2022-09-18.pdf"
+            }
+          ],
+          "texts": [
+            {
+              "at": [
+                167.2,
+                143.2
+              ],
+              "text": "SIDE VIEW",
+              "size": 2.8
+            },
+            {
+              "at": [
+                302.4,
+                165.6
+              ],
+              "text": "FRONT VIEW",
+              "size": 2.8
+            },
+            {
+              "at": [
+                302.4,
+                188.0
+              ],
+              "text": "TOP VIEW",
+              "size": 2.8
+            }
+          ]
+        },
+        {
+          "scale": 0.5,
+          "views": [
+            {
+              "page": 2,
+              "src": [
+                54,
+                78,
+                377,
+                224
+              ],
+              "k": 1.0,
+              "at": [
+                46.5,
+                44
+              ],
+              "label": "HOLE LOCATIONS",
+              "pdf": "Fusion_KC-01-1012_Side_Panel_2022-09-18.pdf"
+            }
+          ],
+          "notes": true,
+          "tables": [
+            {
+              "at": [
+                276.5,
+                196
+              ],
+              "title": "HOLE TABLE",
+              "cols": [
+                [
+                  "TAG",
+                  10,
+                  "middle"
+                ],
+                [
+                  "X",
+                  16,
+                  "end"
+                ],
+                [
+                  "Y",
+                  16,
+                  "end"
+                ],
+                [
+                  "SIZE",
+                  18,
+                  "middle"
+                ]
+              ],
+              "rows": [
+                [
+                  "A1",
+                  "55.00",
+                  "189.50",
+                  "Ø4.76"
+                ],
+                [
+                  "A2",
+                  "71.86",
+                  "184.09",
+                  "Ø4.76"
+                ],
+                [
+                  "A3",
+                  "118.96",
+                  "102.51",
+                  "Ø4.76"
+                ],
+                [
+                  "A4",
+                  "146.50",
+                  "86.50",
+                  "Ø4.76"
+                ],
+                [
+                  "A5",
+                  "271.00",
+                  "86.50",
+                  "Ø4.76"
+                ],
+                [
+                  "A6",
+                  "395.50",
+                  "86.50",
+                  "Ø4.76"
+                ]
+              ],
+              "size": 2.2
+            }
+          ]
+        }
+      ],
+      "parts": [],
+      "notes": [
+        "1. Material: acrylic, opaque black, 6.00 mm. Supplier: TAP Plastics. Qty 2 per box (left and right, alike).",
+        "2. Outline 412.00 × 200.00 × 6.00 mm, sloped top (sheet 1). Edges polished or machined (routed) for gluing, as marked.",
+        "3. Holes A1 to A6: Ø4.76 through, for the enclosure brackets. Datum: lower-left corner, X right, Y up.",
+        "4. Sheet 1 at 2:5 (isometric view not to scale); sheet 2 at 1:2, on A3."
+      ]
+    },
+    "3": {
+      "pdf": "Fusion_KC-01-1013_Bottom_Plate_2022-09-18.pdf",
+      "line_scale": 0.35,
+      "sheets": [
+        {
+          "scale": 0.25,
+          "views": [
+            {
+              "page": 1,
+              "src": [
+                88,
+                38,
+                392,
+                178
+              ],
+              "k": 1.0,
+              "at": [
+                100,
+                44
+              ],
+              "clip": [
+                [
+                  88,
+                  38
+                ],
+                [
+                  392,
+                  38
+                ],
+                [
+                  392,
+                  178
+                ],
+                [
+                  152,
+                  178
+                ],
+                [
+                  150,
+                  172
+                ],
+                [
+                  106,
+                  148
+                ],
+                [
+                  88,
+                  136
+                ]
+              ],
+              "pdf": "Fusion_KC-01-1013_Bottom_Plate_2022-09-18.pdf"
+            },
+            {
+              "page": 1,
+              "src": [
+                25.6,
+                106.6,
+                181.6,
+                282.6
+              ],
+              "k": 0.85,
+              "at": [
+                24.6,
+                113.2
+              ],
+              "clip": [
+                [
+                  24,
+                  105
+                ],
+                [
+                  30,
+                  105
+                ],
+                [
+                  106,
+                  152
+                ],
+                [
+                  150,
+                  177
+                ],
+                [
+                  182,
+                  177
+                ],
+                [
+                  182,
+                  283
+                ],
+                [
+                  24,
+                  283
+                ]
+              ],
+              "label": "ISOMETRIC VIEW",
+              "sublabel": "Not to scale",
+              "pdf": "Fusion_KC-01-1013_Bottom_Plate_2022-09-18.pdf"
+            }
+          ],
+          "texts": [
+            {
+              "at": [
+                148.5,
+                173.0
+              ],
+              "text": "SIDE VIEW",
+              "size": 2.8
+            },
+            {
+              "at": [
+                283.0,
+                172.0
+              ],
+              "text": "FRONT VIEW",
+              "size": 2.8
+            },
+            {
+              "at": [
+                283.0,
+                186.0
+              ],
+              "text": "TOP VIEW",
+              "size": 2.8
+            }
+          ]
+        },
+        {
+          "scale": 0.2,
+          "views": [
+            {
+              "page": 2,
+              "src": [
+                54,
+                104,
+                374,
+                254
+              ],
+              "k": 0.8,
+              "at": [
+                16,
+                46
+              ],
+              "label": "HOLE LOCATIONS",
+              "pdf": "Fusion_KC-01-1013_Bottom_Plate_2022-09-18.pdf",
+              "clip": [
+                [
+                  54,
+                  104
+                ],
+                [
+                  374,
+                  104
+                ],
+                [
+                  374,
+                  235
+                ],
+                [
+                  228,
+                  235
+                ],
+                [
+                  228,
+                  254
+                ],
+                [
+                  54,
+                  254
+                ]
+              ]
+            }
+          ],
+          "notes": true,
+          "tables": [
+            {
+              "at": [
+                282,
+                48
+              ],
+              "title": "HOLE TABLE",
+              "cols": [
+                [
+                  "TAG",
+                  10,
+                  "middle"
+                ],
+                [
+                  "X",
+                  16,
+                  "end"
+                ],
+                [
+                  "Y",
+                  16,
+                  "end"
+                ],
+                [
+                  "SIZE",
+                  18,
+                  "middle"
+                ]
+              ],
+              "rows": [
+                [
+                  "A1",
+                  "45.00",
+                  "25.00",
+                  "Ø3.18"
+                ],
+                [
+                  "A2",
+                  "45.00",
+                  "115.00",
+                  "Ø3.18"
+                ],
+                [
+                  "A3",
+                  "50.00",
+                  "242.00",
+                  "Ø3.18"
+                ],
+                [
+                  "A4",
+                  "50.00",
+                  "322.00",
+                  "Ø3.18"
+                ],
+                [
+                  "A5",
+                  "275.00",
+                  "25.00",
+                  "Ø3.18"
+                ],
+                [
+                  "A6",
+                  "275.00",
+                  "115.00",
+                  "Ø3.18"
+                ],
+                [
+                  "A7",
+                  "370.00",
+                  "242.00",
+                  "Ø3.18"
+                ],
+                [
+                  "A8",
+                  "370.00",
+                  "322.00",
+                  "Ø3.18"
+                ],
+                [
+                  "A9",
+                  "492.00",
+                  "242.00",
+                  "Ø3.18"
+                ],
+                [
+                  "A10",
+                  "492.00",
+                  "322.00",
+                  "Ø3.18"
+                ]
+              ],
+              "size": 2.2
+            },
+            {
+              "at": [
+                344,
+                48
+              ],
+              "cols": [
+                [
+                  "TAG",
+                  10,
+                  "middle"
+                ],
+                [
+                  "X",
+                  16,
+                  "end"
+                ],
+                [
+                  "Y",
+                  16,
+                  "end"
+                ],
+                [
+                  "SIZE",
+                  18,
+                  "middle"
+                ]
+              ],
+              "rows": [
+                [
+                  "A11",
+                  "587.00",
+                  "25.00",
+                  "Ø3.18"
+                ],
+                [
+                  "A12",
+                  "587.00",
+                  "115.00",
+                  "Ø3.18"
+                ],
+                [
+                  "A13",
+                  "812.00",
+                  "242.00",
+                  "Ø3.18"
+                ],
+                [
+                  "A14",
+                  "812.00",
+                  "322.00",
+                  "Ø3.18"
+                ],
+                [
+                  "A15",
+                  "817.00",
+                  "25.00",
+                  "Ø3.18"
+                ],
+                [
+                  "A16",
+                  "817.00",
+                  "115.00",
+                  "Ø3.18"
+                ],
+                [
+                  "B1",
+                  "411.40",
+                  "166.00",
+                  "Ø4.76"
+                ],
+                [
+                  "B2",
+                  "411.40",
+                  "386.00",
+                  "Ø4.76"
+                ],
+                [
+                  "B3",
+                  "450.60",
+                  "166.00",
+                  "Ø4.76"
+                ],
+                [
+                  "B4",
+                  "450.60",
+                  "386.00",
+                  "Ø4.76"
+                ]
+              ],
+              "size": 2.2
+            },
+            {
+              "at": [
+                282,
+                108
+              ],
+              "title": "HOLE SIZES",
+              "cols": [
+                [
+                  "TAG",
+                  10,
+                  "middle"
+                ],
+                [
+                  "SIZE",
+                  30,
+                  "start"
+                ],
+                [
+                  "QTY",
+                  12,
+                  "middle"
+                ]
+              ],
+              "rows": [
+                [
+                  "A",
+                  "Ø3.18 THRU",
+                  "16"
+                ],
+                [
+                  "B",
+                  "Ø4.76 THRU",
+                  "4"
+                ]
+              ],
+              "size": 2.2
+            }
+          ]
+        }
+      ],
+      "parts": [],
+      "notes": [
+        "1. Material: acrylic, opaque black, 6.00 mm. Supplier: TAP Plastics.",
+        "2. Outline 862.00 × 412.00 × 6.00 mm. Edges polished, as marked.",
+        "3. Holes as the hole table (sheet 2): A Ø3.18 through, board mounting (A3, A4, A7, A8 and A9, A10, A13, A14: the Control Module and the Ctrl Module Extension, 320 × 80 patterns; A1, A2, A5, A6, A11, A12, A15, A16: not used); B Ø4.76 through, for the internal brace. Datum: lower-left corner.",
+        "4. Sheet 1 at 1:4 (isometric view not to scale); sheet 2 at 1:5, on A3."
+      ]
+    },
+    "4": {
+      "pdf": "Fusion_KC-01-1014_Back_Panel_2022-09-18.pdf",
+      "line_scale": 0.35,
+      "sheets": [
+        {
+          "scale": 0.25,
+          "views": [
+            {
+              "page": 1,
+              "src": [
+                26,
+                39.5,
+                392,
+                212
+              ],
+              "k": 1.0,
+              "at": [
+                16,
+                45.5
+              ],
+              "clip": [
+                [
+                  26,
+                  39.5
+                ],
+                [
+                  392,
+                  39.5
+                ],
+                [
+                  392,
+                  212
+                ],
+                [
+                  158,
+                  212
+                ],
+                [
+                  128,
+                  190
+                ],
+                [
+                  26,
+                  145
+                ]
+              ],
+              "pdf": "Fusion_KC-01-1014_Back_Panel_2022-09-18.pdf"
+            },
+            {
+              "page": 1,
+              "src": [
+                25.6,
+                148.0,
+                181.3,
+                281.3
+              ],
+              "k": 0.84,
+              "at": [
+                24.5,
+                151.8
+              ],
+              "clip": [
+                [
+                  24,
+                  148
+                ],
+                [
+                  60,
+                  148
+                ],
+                [
+                  160,
+                  213
+                ],
+                [
+                  185,
+                  213
+                ],
+                [
+                  185,
+                  283
+                ],
+                [
+                  24,
+                  283
+                ]
+              ],
+              "label": "ISOMETRIC VIEW",
+              "sublabel": "Not to scale",
+              "pdf": "Fusion_KC-01-1014_Back_Panel_2022-09-18.pdf"
+            }
+          ],
+          "texts": [
+            {
+              "at": [
+                62.0,
+                151.0
+              ],
+              "text": "SIDE VIEW",
+              "size": 2.8
+            },
+            {
+              "at": [
+                257.0,
+                182.0
+              ],
+              "text": "FRONT VIEW",
+              "size": 2.8
+            },
+            {
+              "at": [
+                257.0,
+                222.0
+              ],
+              "text": "TOP VIEW",
+              "size": 2.8
+            }
+          ]
+        },
+        {
+          "scale": 0.25,
+          "views": [
+            {
+              "page": 2,
+              "src": [
+                50,
+                77,
+                358,
+                212
+              ],
+              "k": 1.0,
+              "at": [
+                56,
+                58
+              ],
+              "label": "CUT-OUT LOCATIONS",
+              "pdf": "Fusion_KC-01-1014_Back_Panel_2022-09-18.pdf"
+            }
+          ]
+        },
+        {
+          "scale": 0.25,
+          "views": [
+            {
+              "page": 3,
+              "src": [
+                44,
+                133,
+                386,
+                229
+              ],
+              "k": 1.0,
+              "at": [
+                18,
+                44
+              ],
+              "label": "HOLE LOCATIONS",
+              "pdf": "Fusion_KC-01-1014_Back_Panel_2022-09-18.pdf"
+            }
+          ],
+          "notes": true,
+          "tables": [
+            {
+              "at": [
+                252,
+                152
+              ],
+              "title": "HOLE TABLE",
+              "cols": [
+                [
+                  "TAG",
+                  10,
+                  "middle"
+                ],
+                [
+                  "X",
+                  16,
+                  "end"
+                ],
+                [
+                  "Y",
+                  16,
+                  "end"
+                ],
+                [
+                  "SIZE",
+                  18,
+                  "middle"
+                ]
+              ],
+              "rows": [
+                [
+                  "A1",
+                  "30.00",
+                  "189.50",
+                  "Ø4.76"
+                ],
+                [
+                  "A2",
+                  "64.50",
+                  "47.50",
+                  "Ø4.76"
+                ],
+                [
+                  "A3",
+                  "64.50",
+                  "152.50",
+                  "Ø4.76"
+                ],
+                [
+                  "A4",
+                  "169.50",
+                  "47.50",
+                  "Ø4.76"
+                ],
+                [
+                  "A5",
+                  "169.50",
+                  "152.50",
+                  "Ø4.76"
+                ],
+                [
+                  "A6",
+                  "280.00",
+                  "189.50",
+                  "Ø4.76"
+                ],
+                [
+                  "A7",
+                  "405.40",
+                  "180.00",
+                  "Ø4.76"
+                ]
+              ],
+              "size": 2.2
+            },
+            {
+              "at": [
+                314,
+                152
+              ],
+              "cols": [
+                [
+                  "TAG",
+                  10,
+                  "middle"
+                ],
+                [
+                  "X",
+                  16,
+                  "end"
+                ],
+                [
+                  "Y",
+                  16,
+                  "end"
+                ],
+                [
+                  "SIZE",
+                  18,
+                  "middle"
+                ]
+              ],
+              "rows": [
+                [
+                  "A8",
+                  "444.60",
+                  "180.00",
+                  "Ø4.76"
+                ],
+                [
+                  "A9",
+                  "570.00",
+                  "189.50",
+                  "Ø4.76"
+                ],
+                [
+                  "A10",
+                  "680.50",
+                  "47.50",
+                  "Ø4.76"
+                ],
+                [
+                  "A11",
+                  "680.50",
+                  "152.50",
+                  "Ø4.76"
+                ],
+                [
+                  "A12",
+                  "785.50",
+                  "47.50",
+                  "Ø4.76"
+                ],
+                [
+                  "A13",
+                  "785.50",
+                  "152.50",
+                  "Ø4.76"
+                ],
+                [
+                  "A14",
+                  "820.00",
+                  "189.50",
+                  "Ø4.76"
+                ]
+              ],
+              "size": 2.2
+            }
+          ]
+        }
+      ],
+      "parts": [],
+      "notes": [
+        "1. Material: acrylic, opaque black, 6.00 mm. Supplier: TAP Plastics.",
+        "2. Outline 850.00 × 200.00 × 6.00 mm. Edges polished or machined (routed) for gluing, as marked.",
+        "3. Cut-outs (sheets 1 and 2): 2 × Ø116.00 fan openings with 8 × Ø4.76 fan screw holes; 5 × Ø22.70 for the panel-mount inserts (12 V power jack Adafruit 5607, 2 × USB-C Adafruit 4259, GX16-10 in a close-out plug cut to Ø16, 1 close-out plug Amazon B07DYWNZHY).",
+        "4. Holes A1 to A14 (sheet 3): Ø4.76 through, for the enclosure brackets. Datum: lower-left corner.",
+        "5. Views at 1:4 on A3; isometric view not to scale."
+      ]
+    }
+  }
+}

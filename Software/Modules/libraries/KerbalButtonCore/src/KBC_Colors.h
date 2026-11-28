@@ -1,6 +1,6 @@
 /**
  * @file        KBC_Colors.h
- * @version     2.4.0
+ * @version     2.5.1
  * @date        2026-04-09
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker

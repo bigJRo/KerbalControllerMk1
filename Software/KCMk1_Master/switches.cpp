@@ -29,7 +29,7 @@ static const SwitchDef kSw[SW_COUNT] = {
   { "SCE",     "NORM",  "AUX",   MOD_FUNCTION, 18, false, 0 },
   { "UPTLM",   "INHIB", "XMIT",  MOD_FUNCTION, 19, false, 0 },
   { "LTG",     "NORM",  "TEST",  MOD_FUNCTION, 20, true,  0 },
-  { "A/P",     "INHIB", "ARM",   MOD_FUNCTION, 21, false, 0 },
+  { "A/P",     "INHIB", "ENAB",  MOD_FUNCTION, 21, false, 0 },
   { "ENGINE",  "SAFE",  "ARM",   MOD_FUNCTION, 22, false, 0 },
   { "THRTL",   "STD",   "FINE",  MOD_FUNCTION, 23, false, 0 },
   { "CHUTE",   "SAFE",  "ARM",   MOD_VEHICLE,  16, false, 0 },
@@ -232,8 +232,8 @@ void switchesService() {
 void switchesBoot() {
   switchesService();
   if (g_grp[0].known)
-    bootLineS(SEV_OK, bootFmt("ENGINE %s A/P %s", g_panel.engArm ? "ARM" : "SAFE", g_panel.apArm ? "ARM" : "INHIB"),
-              "SW GRP 1  ENGINE %s  A/P %s", g_panel.engArm ? "ARM" : "SAFE", g_panel.apArm ? "ARM" : "INHIB");
+    bootLineS(SEV_OK, bootFmt("ENGINE %s A/P %s", g_panel.engArm ? "ARM" : "SAFE", g_panel.apArm ? "ENAB" : "INHIB"),
+              "SW GRP 1  ENGINE %s  A/P %s", g_panel.engArm ? "ARM" : "SAFE", g_panel.apArm ? "ENAB" : "INHIB");
   else
     bootLineS(SEV_WARN, "SW GRP 1 NOT READ", "SW GRP 1  NOT READ: ENGINE SAFE");
   if (!g_grp[1].known) bootLineS(SEV_WARN, "SW GRP 2 NOT READ", "SW GRP 2  NOT READ");

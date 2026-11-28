@@ -1,7 +1,7 @@
 /**
  * @file        KCMk1_Test_GPWS.ino
- * @version     1.0.0
- * @date        2026-11-08
+ * @version     1.1.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1 — Module Tester
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -15,7 +15,7 @@
  *              default 200), encoder with push (resets to 200), and three
  *              keycaps: ENA (GPWS mode OFF -> ACTIVE green -> PROX amber ->
  *              OFF), PROX and RNDZ (mutually exclusive, only when GPWS is on).
- *              The module drives its own LEDs. Identity fw 1.0, caps 0x10.
+ *              The module drives its own LEDs. Identity fw 2.2.0 / lib 2.1.0 (sketch / library), caps 0x10.
  *
  *              Packet (8 bytes): header, events (rising edges: bit 0 ENA,
  *              1 PROX, 2 RNDZ, 3 knob push), change, state (bits 1:0 mode,
@@ -210,7 +210,8 @@ static const KtcStep STEPS[] = {
 static const KtcModuleDef MODULE = {
     "GPWS", "KC-01-1841/1842 7-segment board",
     KMC_TYPE_GPWS_INPUT, 0x2A, KMC_DISPLAY_PACKET_SIZE,
-    1, 0, KMC_CAP_DISPLAY,
+    2, 1, 0, KMC_CAP_DISPLAY,          // Kerbal7SegmentCore 2.1.0 (K7SC_FIRMWARE_* in K7SC_Config.h)
+    2, 2, 0,                           // GPWS Input sketch 2.2.0 (SKETCH_VERSION_* in the module sketch)
     STEPS, sizeof(STEPS) / sizeof(STEPS[0]),
     cleanup, live,
 };

@@ -42,7 +42,7 @@ struct PanelState {
   uint8_t ctrlMode;         // CTRL_MODE_* (mode selector)
   uint8_t ctrlGrp;          // 1..6 (Dual Encoder ENC1, stage 4)
   bool    audio;            // AUDIO switch; LIVE until read
-  bool    apArm;            // A/P INHIB / ARM
+  bool    apArm;            // A/P INHIB / ENAB
   bool    engArm;           // ENGINE SAFE / ARM (the switch; interlocks.h has the lever sync)
   bool    trim;             // master trim set
   bool    thrPrec;          // THRTL STD / FINE (the switch)

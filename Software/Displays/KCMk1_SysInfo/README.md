@@ -4,17 +4,17 @@ The small portrait screen on Panel A2 (I2C 0x14, slot P2). It has no touch and n
 
 | | |
 |---|---|
-| **Version** | 1.0.0 (`SYSINFO_VERSION`, `KCMk1_SysInfo.h`) |
+| **Version** | 1.1.0 (`SYSINFO_VERSION_MAJOR` / `_MINOR` / `_PATCH`, `KCMk1_SysInfo.h`; `SYSINFO_VERSION` is built from them). 1.1.0: versions are three-place on the bus: the status read is 5 bytes `[0xAF, flags, major, minor, patch]`, and MASTER FW shows X.Y.Z from the 28-byte STATUS of master v0.10.5 (X.Y from a 27-byte one). 1.0.1: the A/P switch reads INHIB / ENAB (was ARM) |
 | **Board** | 2" TFT Display Driver KC-01-1901 / 1902 V2.0: Seeed XIAO RP2350, ER-TFTM020-2 240 × 320 IPS (ST7789) used in portrait, microSD on the same SPI bus |
 | **Design** | `Documents/Developer/Sys_Info_Display_Design.md` (Draft 3, built) |
-| **Protocol** | `Documents/Developer/I2C_Protocol_Specification.md` §15.4 (v2.21); master side `Software/KCMk1_Master/sysinfo.*` (v0.10.0 or later) |
+| **Protocol** | `Documents/Developer/I2C_Protocol_Specification.md` §15.4 (v2.22); master side `Software/KCMk1_Master/sysinfo.*` (v0.10.0 or later; v0.10.5 for the master's patch) |
 | **Renders** | `Documents/User/assets/sysinfo/SysInfo_*.png`, drawn by this sketch on the host |
 
 ## Screens
 
 | Screen | When | Content |
 |---|---|---|
-| Splash | Power-on, 2–5 s | `KCMk1 / SYS INFO / v1.0.0`, or `/KCMK1/SPLASH.BMP` from the card |
+| Splash | Power-on, 2–5 s | `KCMk1 / SYS INFO / v1.1.0`, or `/KCMK1/SPLASH.BMP` from the card |
 | Boot | Until BOOT_DONE | Newest boot line, OK / warning / error counts, newest problem |
 | Status | After boot, demo included | Supply volts, amps and watts; board temperature and fan; KSP links up; modules present; a message area naming each problem in turn, or `ALL SYSTEMS NOMINAL` and service items |
 | SWITCH ERR | While the master reports switch errors | Each switch in error and the vessel's state, five a page |
@@ -40,7 +40,7 @@ Every string is Roboto Black 32 or 48, so every capital is at least 22 px (2.8 m
 | `Backlight.ino` | Flight / standby level from the BACKLIGHT frame, 300 ms ramp, PWM |
 | `Frames.ino` | The 32-deep frame queue, frame parsing, the model, the 5 s silence rule |
 | `Gfx.ino` | Frame buffer, font glyphs, icons, word wrap, anti-sticking shift, push on change |
-| `I2CSlave.ino` | `Wire1` slave at 0x14; the 4-byte status read |
+| `I2CSlave.ino` | `Wire1` slave at 0x14; the 5-byte status read |
 | `Messages.ino` | The status screen's message list, worst first |
 | `Screen_Boot.ino`, `Screen_Status.ino`, `Screen_SwitchErr.ino` | The screens |
 | `SdSplash.ino` | The power-on splash, built in or from the card |

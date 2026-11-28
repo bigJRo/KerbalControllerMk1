@@ -41,6 +41,12 @@ DOC_TYPES = {"0": ("ASSY", "CCA Assembly Drawing"), "1": ("SCH", "Schematic"),
              "2": ("PWB", "PCB Fabrication Drawing"), "3": ("BOM", "Bill of Materials"),
              "4": ("PLACE", "Assembly Placement Drawing")}
 
+
+def doc_types(f):
+    """The package's document types: DOC_TYPES unless the package defines its own
+    (a mechanical package, for example: an assembly drawing and part drawings)."""
+    return f.get("doc_types") or DOC_TYPES
+
 TB_W, TB_H, PKG_H = 190.0, 50.0, 7.0     # title block and package strip sizes
 
 
@@ -233,7 +239,7 @@ def frame(s, f):
     s.text(rx2 + A + (rw2 - A) / 2, ty + 33, f.get("dwg_no", ""), size=5.6, anchor="middle", weight="bold")
     y4, h4 = ty + 39, th - 39
     s.cell(rx2, y4, 16, h4, "Rev.", f.get("rev", "-"), vsize=5.0, vweight="bold", align="middle")
-    s.cell(rx2 + 16, y4, 26, h4, "Board version", f.get("board_version", ""), vsize=3.4, align="middle")
+    s.cell(rx2 + 16, y4, 26, h4, f.get("version_label") or "Board version", f.get("board_version", ""), vsize=3.4, align="middle")
     s.cell(rx2 + 42, y4, 30, h4, "Date of issue", f.get("date", ""), vsize=3.4, align="middle")
     s.cell(rx2 + 72, y4, rw2 - 72, h4, "Sheet", f"{f.get('sheet', 1)} / {f.get('sheets', 1)}", vsize=4.2, align="middle")
 
@@ -246,7 +252,7 @@ def frame(s, f):
     docs = f.get("package_docs") or "01234"     # a package may have no assembly drawing
     cw5 = (tw - 20) / len(docs)
     for k, d in enumerate(docs):
-        code, name = DOC_TYPES[d]
+        code, name = doc_types(f)[d][:2]
         cur = f.get("dwg_no", "").endswith(d)
         cx = tx + 20 + k * cw5
         s.rect(cx, py, cw5, PKG_H, fill=CUR if cur else "none", sw=0.5 if cur else 0.25)
@@ -258,7 +264,8 @@ def frame(s, f):
 
 def file_name(f, name):
     d = f["dwg_no"][-1]
-    suffix = "" if d == "0" else "_" + DOC_TYPES[d][0]
+    t = doc_types(f)[d]
+    suffix = t[2] if len(t) > 2 else ("" if d == "0" else "_" + t[0])
     return f"{f['dwg_no']}_Rev{f.get('rev', '-')}_{name}{suffix}.pdf"
 
 

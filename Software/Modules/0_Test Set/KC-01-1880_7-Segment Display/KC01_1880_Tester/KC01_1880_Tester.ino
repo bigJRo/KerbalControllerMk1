@@ -1,7 +1,7 @@
 /**
  * @file        KC01_1880_Tester.ino
- * @version     2.0.0
- * @date        2026-04-28
+ * @version     2.1.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -50,7 +50,17 @@
 // ── I2C ──────────────────────────────────────────────────────
 #define MODULE_ADDR     0x2A
 #define PACKET_SIZE     8       // 3-byte header + 5-byte payload
-#define IDENTITY_SIZE   4
+#define IDENTITY_SIZE   KMC_IDENTITY_SIZE   // 8: type, lib major, minor, caps, lib patch, sketch major, minor, patch (I2C spec §6)
+
+// The versions the module reports: Kerbal7SegmentCore (K7SC_FIRMWARE_* in
+// K7SC_Config.h) at bytes 1/2/4, KC01_1880_TestFirmware (SKETCH_VERSION_*)
+// at bytes 5..7.
+#define EXPECT_LIB_MAJOR     2
+#define EXPECT_LIB_MINOR     1
+#define EXPECT_LIB_PATCH     0
+#define EXPECT_SKETCH_MAJOR  2
+#define EXPECT_SKETCH_MINOR  1
+#define EXPECT_SKETCH_PATCH  0
 
 // ── INT pin ───────────────────────────────────────────────────
 #define PIN_INT         6       // Xiao D6, active LOW
@@ -207,9 +217,18 @@ void testIdentity() {
     delay(IDENTITY_DELAY_MS);
     uint8_t buf[IDENTITY_SIZE] = {0};
     uint8_t got = readBytes(buf, IDENTITY_SIZE);
-    if (got != IDENTITY_SIZE) { printFail("Wrong byte count"); return; }
+    if (got != IDENTITY_SIZE) { printFail("Wrong byte count (8 expected; 5 has no sketch version, 4 no patch: older firmware)"); return; }
     Serial.print(F("  Type ID  : 0x")); Serial.println(buf[0], HEX);
-    Serial.print(F("  FW       : ")); Serial.print(buf[1]); Serial.print('.'); Serial.println(buf[2]);
+    Serial.print(F("  Library  : ")); Serial.print(buf[1]); Serial.print('.'); Serial.print(buf[2]);
+    Serial.print('.'); Serial.println(buf[4]);
+    Serial.print(F("  Sketch   : ")); Serial.print(buf[5]); Serial.print('.'); Serial.print(buf[6]);
+    Serial.print('.'); Serial.println(buf[7]);
+    buf[4] != KMC_FW_PATCH_UNKNOWN ? printPass("FW patch byte present") : printFail("FW patch byte 0xFF");
+    (buf[1] == EXPECT_LIB_MAJOR && buf[2] == EXPECT_LIB_MINOR && buf[4] == EXPECT_LIB_PATCH)
+        ? printPass("Library version 2.1.0 (Kerbal7SegmentCore)") : printFail("Library version not 2.1.0");
+    (buf[5] == EXPECT_SKETCH_MAJOR && buf[6] == EXPECT_SKETCH_MINOR && buf[7] == EXPECT_SKETCH_PATCH)
+        ? printPass("Sketch version 2.1.0 (KC01_1880_TestFirmware)")
+        : printFail("Sketch version differs from KC01_1880_TestFirmware (0xFF = not sent or not set)");
     Serial.print(F("  Caps     : 0b")); Serial.println(buf[3], BIN);
     buf[0] == KMC_TYPE_GPWS_INPUT  ? printPass("Type ID correct")    : printFail("Type ID wrong");
     buf[3] & KMC_CAP_DISPLAY       ? printPass("CAP_DISPLAY set")    : printFail("CAP_DISPLAY missing");

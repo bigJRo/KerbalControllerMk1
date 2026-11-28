@@ -1,6 +1,6 @@
 /**
  * @file        TesterHW.h
- * @version     2.0.0
+ * @version     2.1.0
  * @project     Kerbal Controller Mk1 — Module Tester
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -45,15 +45,29 @@ struct ModuleState {
 };
 
 // ============================================================
-//  Identity (CMD_GET_IDENTITY response, 4 bytes)
+//  Identity (CMD_GET_IDENTITY response, 8 bytes, I2C spec v2.22 §6:
+//  type, library major, minor, caps, library patch, sketch major, minor,
+//  patch). fw* is the library version (the sketch's for a standalone
+//  sketch), sk* the module sketch's own. fwPatch is KMC_FW_PATCH_UNKNOWN
+//  for the 4-byte form (no patch byte, or 0xFF); skMajor is
+//  KMC_SKETCH_VERSION_UNKNOWN for the 5- and 4-byte forms (or 0xFF).
 // ============================================================
 struct ModuleIdentity {
     uint8_t typeId;
     uint8_t fwMajor;
     uint8_t fwMinor;
     uint8_t caps;
+    uint8_t fwPatch;
+    uint8_t skMajor;
+    uint8_t skMinor;
+    uint8_t skPatch;
     bool    valid;
 };
+
+/** @brief An identity with nothing read: versions unknown, not valid. */
+#define MODULE_IDENTITY_NONE { 0, 0, 0, 0, KMC_FW_PATCH_UNKNOWN, \
+                               KMC_SKETCH_VERSION_UNKNOWN, KMC_SKETCH_VERSION_UNKNOWN, \
+                               KMC_SKETCH_VERSION_UNKNOWN, false }
 
 // ============================================================
 //  Power reading from the INA228

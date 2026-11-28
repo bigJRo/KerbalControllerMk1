@@ -1,6 +1,6 @@
 # KCMk1_Annunciator
 
-**Kerbal Controller Mk1 — Annunciator Panel Sketch** · v3.10.0
+**Kerbal Controller Mk1 — Annunciator Panel Sketch** · v3.10.1
 Teensy 4.1 firmware for the KSP annunciator display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
@@ -236,7 +236,7 @@ Three screens are available. Transitions are managed by `switchToScreen()` in `A
 - SOI label (274×48) and body thumbnail/globe (274×176) in the left column below MASTER ALARM — touch to open the SOI screen
 - Inner regime column (x=874, 75 px wide): DOCK vertical-text indicator (75×100) at the top, then four regime tiles (75×75) — FLYING LOW, FLYING HIGH, LOW SPACE, HIGH SPACE — with only the single active regime lit. Touch DOCK to toggle it (see **Vessel Situation**)
 - Outer vessel-situation column (x=949, eight 75×50 tiles, top→bottom): CONTACT, PRE-LAUNCH, FLIGHT, SUB-ORBIT, ORBIT, ESCAPE, LANDED, SPLASH. CONTACT lights whenever LANDED or SPLASH is set
-- Mode/status grid (6 columns × 2 rows, twelve 100×40 tiles) driven by `state.modeFlags` (`MF_*` bits reported by the master): DEMO, WARP, AUDIO, A/P ARM, TRIM, AUTOPILOT / DEBUG, SWITCH ERR, SIMPIT LOST, THRTL PREC, INPUT PREC, ENG ARM
+- Mode/status grid (6 columns × 2 rows, twelve 100×40 tiles) driven by `state.modeFlags` (`MF_*` bits reported by the master): DEMO, WARP, AUDIO, A/P ENAB, TRIM, AUTOPILOT / DEBUG, SWITCH ERR, SIMPIT LOST, THRTL PREC, INPUT PREC, ENG ARM
 - SPC/PLN/RVR control-mode tile (row 3, 212×80) with vessel-type icon — text green when the control mode matches the vessel type, red on mismatch
 - Bottom telemetry readouts: vessel name and TIMEWARP (left column, 424 wide); STG / CORE / CREW and COMM / SKIN / CAP (right triple, 200 each); CTRLGRP (212×80)
 
@@ -485,6 +485,7 @@ The Annunciator follows a deterministic startup handshake with the master before
 
 | Version | Notes |
 |---------|-------|
+| **3.10.1** | **Mode tile 3 reads A/P ENAB** (was A/P ARM): the panel A2 switch is now engraved INHIB / ENAB, so it does not repeat ENGINE SAFE / ARM beside it. Same bit (`MF_AP_ARM`, 3); the test-mode entry is renamed to match. |
 | **3.10.0** | **Demo follows the master's flag only; DOCK tile touch; backlight dimming.** *Demo:* Simpit is serviced in demo too (`simpit.update()` whenever `simpitConnected`) and `demoLifecycle()` takes only the scene, flight status and dock / undock from it, so the link stays up and the scene is known when demo ends. Leaving demo (`leaveDemoMode()`) is a fresh start: alarm audio silenced, GPWS and the display state reset, a dock / undock seen during demo applied, then Main with a refresh in a flight scene or Standby (Hardware Inventory §8.8, §11 #12). *DOCK touch:* a tap on the DOCK tile toggles DOCK, the pilot's correction for a missed dock / undock event; the next real event overrides it (§11 #2). *Backlight* (GitHub #47): the 4-byte BACKLIGHT frame `[0xB8, flight %, standby %, 0]` from the master; the standby level on the Standby screen, the flight level otherwise, clamped to 5 % and ramped over 300 ms (KCM_Display 1.1.0, KCMk1_SystemConfig 1.3.0). Checked on the host by `tools/behaviour_selftest.py`. |
 | **3.9.0** | **Mode tile 3 reads A/P ARM.** The bit the master sets there is the A/P INHIB / ARM switch (bit 3, unchanged); the tile said THRTL ENA. `MF_THRTL_ENA` is renamed `MF_AP_ARM`. Label only. |
 | **3.8.2** | **LIFE SUPPORT watches the consumables only.** The tile assesses food, water and oxygen time remaining; the three waste resources (CO2, Waste, Waste Water) no longer light it at 80 % / 95 % full, nor on their time to full. The `TACLS_WASTE` channel is no longer registered, and the waste rates, fill thresholds and state fields are gone. |

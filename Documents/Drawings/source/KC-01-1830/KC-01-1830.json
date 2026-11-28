@@ -3,10 +3,10 @@
   "name": "Joystick Module",
   "title": "Joystick Module",
   "subtitle": "Kerbal Controller Mk1 · Main enclosure",
-  "rev": "B",
+  "rev": "D",
   "board_version": "V2.1",
   "date": "2026-11-25",
-  "status": "DRAFT",
+  "status": "RELEASED",
   "created_by": "J. Rostoker",
   "approved_by": "J. Kerman",
   "doc_status": {
@@ -27,6 +27,18 @@
       "B",
       "Board V2.1: PCA9306 VREF2/EN pull-up, BUTTON_JOY pull-down R13",
       "2026-11-25",
+      "J. Kerman"
+    ],
+    [
+      "C",
+      "Stick part in the notes corrected to JH-DX400B-R4",
+      "2026-11-25",
+      "J. Kerman"
+    ],
+    [
+      "D",
+      "Stick part in the notes corrected to JH-D400X-R4",
+      "2026-11-26",
       "J. Kerman"
     ]
   ],
@@ -323,7 +335,7 @@
     "2. PROCESS gives the assembly process and the side the part is on.",
     "3. The PB26 switches SW1, SW2 are self-sourced (no LCSC number) and soldered after delivery; see KC-01-1830 item 2.",
     "4. Designators ending $CBB15 belong to the I²C level converter block (schematic sheet 3); R3$CBB15 is a different part from R3.",
-    "5. U6 is the stick terminal block; the JH-D202X-R4 stick is wired to it in the panel.",
+    "5. U6 is the stick terminal block; the SaiDian JH-D400X-R4 stick (three of its four axes) is wired to it in the panel.",
     "6. Substitutes need the approval of the design authority."
   ],
   "bom_parts": {
@@ -384,7 +396,7 @@
   "assy_notes": [
     "1. Item 1 is the KC-01-1832 card as assembled by JLCPCB to KC-01-1831 to KC-01-1834.",
     "2. The switches (item 2) are fitted after delivery, top side, SW1 and SW2.",
-    "3. The JH-D202X-R4 stick is mounted in the panel and wired to terminal U6.",
+    "3. The SaiDian JH-D400X-R4 stick is mounted in the panel and wired to terminal U6; three of its four axes are used.",
     "4. Orthographic views at 3:2 on A3; isometric views not to scale. Parts list on sheet 2."
   ],
   "assy_sheets": [

@@ -59,7 +59,8 @@ void runStage8() {
     CHECK(le16(*f, 15) == present && le16(*f, 17) == 0, "STATUS: present mask %04X, no FAULT", present);
     CHECK(le16(*f, 19) == (errs > 0xFFFF ? 0xFFFF : errs), "STATUS: I2C errors %lu", (unsigned long)errs);
     CHECK(up <= millis() / 1000 && up + 1 >= millis() / 1000, "STATUS: uptime %lu s", (unsigned long)up);
-    CHECK((*f)[25] == KCM_MASTER_VERSION_MAJOR && (*f)[26] == KCM_MASTER_VERSION_MINOR, "STATUS: version");
+    CHECK(SI_STATUS_LEN == 28 && (*f)[25] == KCM_MASTER_VERSION_MAJOR && (*f)[26] == KCM_MASTER_VERSION_MINOR &&
+          (*f)[27] == KCM_MASTER_VERSION_PATCH, "STATUS: version X.Y.Z at bytes 25-27");
   }
   {
     const auto *c = rig.si.last(SI_FRAME_CONTROL);

@@ -1,23 +1,34 @@
 # KC-01-1910 7in TFT Display Driver: drawing sources
 
-Source files for the Rev B drawings of the 7in TFT Display Driver, board V2.1 (assembly KC-01-1910,
+Source files for the Rev C drawings (released 2026-11-28, owner; supersedes Rev B) of the 7in TFT Display Driver, board V2.1 (assembly KC-01-1910,
 schematic KC-01-1911, PCB KC-01-1912, BOM KC-01-1913, placement KC-01-1914). The released
 PDFs are in `Documents/Drawings`.
 
 | File | What it is | Feeds |
 |---|---|---|
 | `KC-01-1910.json` | Drawing package config: titles, revisions, release status, notes, schematic blocks, assembly views and parts list, layer colours | all drawings |
-| `Fusion_KC-01-1910_..._2026-11-23.pdf` | Fusion 360 assembly drawing (views and parts list); views unchanged from Rev A | 1910 ASSY |
-| `SCH_KC-01-1911_..._2026-11-23.pdf` | EasyEDA Pro schematic export | 1911 SCH |
-| `Gerber_KC-01-1912_..._2026-11-23.zip` | Fabrication zip as sent to JLCPCB: Gerbers, drill files, probe-test data | 1912 PWB, 1914 PLACE |
-| `IPC-D-356A_KC-01-1912_..._2026-11-23.356a` | IPC-D-356A netlist (copper connectivity check) | reference |
-| `BOM_KC-01-1912_..._2026-11-23.csv` | EasyEDA BOM export (UTF-16, tab separated) | 1913 BOM, 1914 PLACE |
-| `PickAndPlace_KC-01-1912_..._2026-11-23.csv` | EasyEDA pick-and-place export (UTF-16, tab separated) | 1914 PLACE |
-| `ProPrj_KC-01-1910_..._2026-11-23.epro2` | EasyEDA Pro project | reference |
+| `Fusion_KC-01-1910_..._2026-11-24.pdf` | Fusion 360 assembly drawing (views and parts list); views unchanged from Rev A | 1910 ASSY |
+| `SCH_KC-01-1911_..._2026-11-28.pdf` | EasyEDA Pro schematic export | 1911 SCH |
+| `Gerber_KC-01-1912_..._2026-11-28.zip` | Fabrication zip as sent to JLCPCB: Gerbers, drill files, probe-test data | 1912 PWB, 1914 PLACE |
+| `IPC-D-356A_KC-01-1912_..._2026-11-28.356a` | IPC-D-356A netlist (copper connectivity check) | reference |
+| `BOM_KC-01-1912_..._2026-11-28.csv` | EasyEDA BOM export (UTF-16, tab separated) | 1913 BOM, 1914 PLACE |
+| `PickAndPlace_KC-01-1912_..._2026-11-28.csv` | EasyEDA pick-and-place export (UTF-16, tab separated) | 1914 PLACE |
+| `ProPrj_KC-01-1910_..._2026-11-28.epro2` | EasyEDA Pro project | reference |
+| `Datasheet_ER-TFT070A2-6-5633.pdf` | EastRising datasheet of the 7in display (pin header JP1 table, outline, electrical). H3 on the PWB meets JP1 face to face, so H3 pin N carries the signal of JP1 pin N±1 (odd/even swapped); all 40 pins checked 2026-11-27 | reference |
 
 The EasyEDA design rule check passes (reported by the owner; no report file in the export).
 The assembly parts list is written in the config (`assy_parts`): the Fusion list has the board
 as "KC_01_1912" and no descriptions, so the descriptions come from the Rev A drawing.
+
+## Rev C (2026-11-28)
+
+The pre-order review converter changes (`Documents/Developer/Preorder_Review.md` 1.1, 1.2, 1.2a), from the owner's 2026-11-28 export:
+
+- MPM3610 U2: EN (pin 17) pulled up from IN through R3, 100 kΩ 0402 (C25741), instead of tied to IN; the EN pin's internal clamp needs at least 55 kΩ at 12 V.
+- Input capacitor 10 µF (C3039694; was 4.7 µF), output capacitor 22 µF (C45783; was 10 µF). The export swaps their numbers: the input capacitor is now C5 and the output C4 (Rev B: C4 input, C5 output).
+- The new R3 renumbers the Rev B R3 (100 Ω on TONE_EN) to R15; nothing else is renumbered. U2, its feedback resistors and the capacitors moved about 1 mm.
+- Checked against Rev B (IPC netlists, part by part on pads and nets): connectivity unchanged apart from EN; inner planes (5 V, GND, V_IN, GND) clear every plated hole of another net by at least 0.41 mm; every outer-layer pour carries one net. EasyEDA DRC clean (owner). The Fusion views are unchanged (owner: the 0402 is too small to show).
+- The schematic export now has the 3.3 V regulator on page 3 and the MPM3610 on page 4; the config follows. Assembly views at 0.35 line weight.
 
 ## Board V2.1
 

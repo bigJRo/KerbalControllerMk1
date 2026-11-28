@@ -1,7 +1,7 @@
 /**
  * @file        KerbalButtonCore.h
- * @version     2.4.0
- * @date        2026-04-07
+ * @version     2.5.1
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -34,6 +34,9 @@
  *                );
  *
  *                void setup() {
+ *                    kbc.setSketchVersion(SKETCH_VERSION_MAJOR,
+ *                                         SKETCH_VERSION_MINOR,
+ *                                         SKETCH_VERSION_PATCH);
  *                    Wire.begin(0x20);      // set I2C address first
  *                    kbc.begin();
  *                }
@@ -132,6 +135,15 @@ public:
      *                     Defaults to KBC_ENABLED_BRIGHTNESS from config.
      */
     void begin(uint8_t brightness = KBC_ENABLED_BRIGHTNESS);
+
+    /**
+     * @brief  Report the module sketch's own version in the identity
+     *         response (bytes 5..7, I2C spec §6), next to the library
+     *         version (bytes 1/2/4). Call in setup() before begin(), from
+     *         the sketch's SKETCH_VERSION_* constants. Without it the
+     *         sketch version reads unknown (0xFF).
+     */
+    void setSketchVersion(uint8_t major, uint8_t minor, uint8_t patch);
 
     // --------------------------------------------------------
     //  Main loop update

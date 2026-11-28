@@ -2,6 +2,7 @@
 // lifecycle, events (press / release / tap / re-press / hold), every packet kind, LED
 // frames, packet checks, reboot recovery, re-probe, polling, the console.
 #include "harness.h"
+#include "i2c_bus.h"
 
 // Events seen by the test handler.
 static std::vector<ModEvent> g_ev;
@@ -18,7 +19,8 @@ static void testDiscovery(Bench &b) {
   boot2(b);
   CHECK(b.rig.si.shows("INT MAP DEFAULT"), "no stored map on a fresh EEPROM");
   CHECK(b.rig.si.shows("MODULES 13/13"), "all 13 found");
-  CHECK(b.rig.si.sevOf("VEHICLE OK") == SEV_OK && serialHas("24 VEHICLE     B_INT_4  OK"), "vehicle OK on B_INT_4");
+  CHECK(b.rig.si.sevOf("VEHICLE OK") == SEV_OK && serialHas("24 VEHICLE     B_INT_4  OK  v4.5.6 / lib 1.2.3"),
+        "vehicle OK on B_INT_4, sketch and library X.Y.Z on Serial");
   bool allLearned = true, allDisabled = true, ledsOff = true, intsHigh = true;
   for (uint8_t i = 0; i < MOD_COUNT; i++) {
     uint8_t l = intLineOf(i);
@@ -251,10 +253,71 @@ static void testWatchdogRestart(Bench &b) {
   CHECK(noDisable, "modules left ACTIVE");
 }
 
+// I2C spec §6 (v2.22): the 8-byte identity (library and sketch version), the 5-byte form
+// (no sketch version) and the 4-byte form of older firmware (no patch either). What is
+// missing, or reads 0xFF (the idle bus after a shorter reply), is unknown: a patch shows
+// as X.Y, a sketch version as "-". A standalone sketch sends its version twice: shown once.
+static void testIdentityForms(Bench &b) {
+  printf("modules: identity forms of 8, 5 and 4 bytes\n");
+  b.m(MOD_ACTION).identLen = KMC_IDENTITY_SIZE_V1;           // 4 bytes: no patch, no sketch version
+  b.m(MOD_STABILITY).identLen = KMC_IDENTITY_SIZE_V2;        // 5 bytes: no sketch version
+  b.m(MOD_ROTATION).fwPatch = KMC_FW_PATCH_UNKNOWN;          // 0xFF where the patch would be
+  b.m(MOD_TIME).skMaj = b.m(MOD_TIME).skMin = b.m(MOD_TIME).skPatch = KMC_SKETCH_VERSION_UNKNOWN;   // sketch never set it
+  b.m(MOD_FUNCTION).skPatch = KMC_FW_PATCH_UNKNOWN;          // sketch version with no patch: X.Y
+  { ModuleSim &t = b.m(MOD_THROTTLE);                        // standalone: the same X.Y.Z twice
+    t.fwMaj = t.skMaj = 2; t.fwMin = t.skMin = 10; t.fwPatch = t.skPatch = 12; }
+  boot2(b);
+  uint32_t shortReads = busStats().shortReads;
+  CHECK(b.rig.si.shows("MODULES 13/13") && modulePresent(MOD_ACTION) && modulePresent(MOD_STABILITY) &&
+        modulePresent(MOD_ROTATION), "every form accepted");
+  CHECK(shortReads == 0, "a 4- or 5-byte identity is not a short read (%lu)", (unsigned long)shortReads);
+  char fw[MOD_FW_TEXT_LEN];
+  CHECK(strcmp(moduleFwText(MOD_UI, fw, sizeof fw), "4.5.6 / lib 1.2.3") == 0, "8-byte form: sketch and library X.Y.Z (%s)", fw);
+  CHECK(strcmp(moduleFwText(MOD_UI, fw, sizeof fw, "v"), "v4.5.6 / lib 1.2.3") == 0, "with a prefix (%s)", fw);
+  CHECK(strcmp(moduleFwText(MOD_THROTTLE, fw, sizeof fw), "2.10.12") == 0, "8-byte form, the two equal: one version (%s)", fw);
+  CHECK(strcmp(moduleFwText(MOD_STABILITY, fw, sizeof fw), "- / lib 1.2.3") == 0, "5-byte form: sketch unknown (%s)", fw);
+  CHECK(strcmp(moduleFwText(MOD_ACTION, fw, sizeof fw), "- / lib 1.2") == 0, "4-byte form: X.Y, sketch unknown (%s)", fw);
+  CHECK(strcmp(moduleFwText(MOD_ACTION, fw, sizeof fw, "v"), "- / lib 1.2") == 0, "no prefix before an unknown version (%s)", fw);
+  CHECK(strcmp(moduleFwText(MOD_ROTATION, fw, sizeof fw), "4.5.6 / lib 1.2") == 0, "library patch 0xFF: X.Y (%s)", fw);
+  CHECK(strcmp(moduleFwText(MOD_TIME, fw, sizeof fw), "- / lib 1.2.3") == 0, "sketch version 0xFF: unknown (%s)", fw);
+  CHECK(strcmp(moduleFwText(MOD_FUNCTION, fw, sizeof fw), "4.5 / lib 1.2.3") == 0, "sketch patch 0xFF: X.Y (%s)", fw);
+  CHECK(serialHas("OK  v4.5.6 / lib 1.2.3") && serialHas("22 ACTION      INT_1    OK  - / lib 1.2") &&
+        serialHas("OK  - / lib 1.2.3") && serialHas("2C THROTTLE    ") && serialHas("OK  v2.10.12") && !serialHas("v2.10.12 / lib"),
+        "versions on the boot lines' Serial form");
+  { bool shortOk = true;                                    // the Sys Info short forms carry no version
+    for (auto &l : b.rig.si.screen())
+      if (l.second.find(" / lib ") != std::string::npos || l.second.find("v4.5") != std::string::npos) shortOk = false;
+    CHECK(shortOk && b.rig.si.sevOf("UI OK") == SEV_OK && b.rig.si.sevOf("THROTTLE OK") == SEV_OK &&
+          b.rig.si.sevOf("ACTION OK") == SEV_OK, "Sys Info boot lines keep their short form (NAME OK)"); }
+  Serial.out.clear(); Serial.stubType("modules\n"); runFor(10);
+  CHECK(Serial.out.find("UI          fw 4.5.6 / lib 1.2.3 ") != std::string::npos &&
+        Serial.out.find("ACTION      fw - / lib 1.2 ") != std::string::npos &&
+        Serial.out.find("STABILITY   fw - / lib 1.2.3 ") != std::string::npos &&
+        Serial.out.find("THROTTLE    fw 2.10.12 ") != std::string::npos, "console: both versions, one when equal, - when unknown");
+  // The re-probe log names both versions: a module missing at boot, plugged in later.
+  b.attachAll(); Wire.detach(0x2B);
+  b.rig.si.frames.clear(); resetStubs(); b.powerOnAll(); stubSrsr() = 1;
+  setup(); hookAll(); panelsSetEnabled(false);
+  CHECK(!modulePresent(MOD_PREWARP), "missing at boot");
+  Serial.out.clear();
+  Wire.attach(0x2B, &b.m(MOD_PREWARP));
+  runFor(5100);
+  CHECK(modulePresent(MOD_PREWARP) && serialHas("PRE-WARP now present, fw 4.5.6 / lib 1.2.3"), "re-probe log: both versions");
+  b.m(MOD_ACTION).identLen = KMC_IDENTITY_SIZE;
+  b.m(MOD_STABILITY).identLen = KMC_IDENTITY_SIZE;
+  b.m(MOD_ROTATION).fwPatch = 3;
+  b.m(MOD_TIME).skMaj = 4; b.m(MOD_TIME).skMin = 5; b.m(MOD_TIME).skPatch = 6;
+  b.m(MOD_FUNCTION).skPatch = 6;
+  { ModuleSim &t = b.m(MOD_THROTTLE);
+    t.fwMaj = 1; t.fwMin = 2; t.fwPatch = 3; t.skMaj = 4; t.skMin = 5; t.skPatch = 6; }
+  boot2(b);
+}
+
 static void testModuleConsole() {
   printf("modules: console\n");
   Serial.out.clear(); Serial.stubType("modules\n"); runFor(10);
   CHECK(Serial.out.find("VEHICLE") != std::string::npos && Serial.out.find("B_INT_4") != std::string::npos, "modules table");
+  CHECK(Serial.out.find("VEHICLE     fw 4.5.6 / lib 1.2.3") != std::string::npos, "modules table: sketch and library X.Y.Z");
   Serial.out.clear(); Serial.stubType("intmap\n"); runFor(10);
   CHECK(Serial.out.find("B_INT_12") != std::string::npos && Serial.out.find("RESOURCE") != std::string::npos, "intmap table");
   Serial.stubType("intmap clear\n"); runFor(10);
@@ -271,6 +334,7 @@ void runStage2() {
   testHealth(b);
   testReprobe(b);
   testWatchdogRestart(b);
+  testIdentityForms(b);
   testModuleConsole();
   for (int a = 0; a < 128; a++) Wire.detach(a);
 }

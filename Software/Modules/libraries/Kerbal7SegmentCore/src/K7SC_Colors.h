@@ -1,6 +1,6 @@
 /**
  * @file        K7SC_Colors.h
- * @version     2.0.0
+ * @version     2.1.0
  * @date        2026-04-09
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker

@@ -1,6 +1,6 @@
 /**
  * @file        KTC_Steps.cpp
- * @version     1.0.0
+ * @version     1.1.1
  * @project     Kerbal Controller Mk1 — Module Tester per-module sketches
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -76,16 +76,35 @@ KtcVerdict ktcStepIdentity(KtcCtx& c) {
     ktcShow(c, "Reading the identity reply (CMD_GET_IDENTITY).", 0);
     KtcIdentity id = ktcIdentify(c.addr);
     if (!id.valid) return ktcFail(c, "no identity reply");
+    char lib[12], libWant[12], sk[12], skWant[12], both[32];
+    ktcFmtVersion(lib, sizeof(lib), id.fwMajor, id.fwMinor, id.fwPatch);
+    ktcFmtVersion(libWant, sizeof(libWant), m.fwMajor, m.fwMinor, m.fwPatch);
+    if (id.skMajor == KMC_SKETCH_VERSION_UNKNOWN) snprintf(sk, sizeof(sk), "-");
+    else ktcFmtVersion(sk, sizeof(sk), id.skMajor, id.skMinor, id.skPatch);
+    ktcFmtVersion(skWant, sizeof(skWant), m.skMajor, m.skMinor, m.skPatch);
+    ktcFmtVersions(both, sizeof(both), id);
     ktcUiRowf(0, KTC_C_TEXT, "Type      0x%02X   expected 0x%02X", id.typeId, m.typeId);
-    ktcUiRowf(1, KTC_C_TEXT, "Firmware  %u.%u    expected %u.%u", id.fwMajor, id.fwMinor, m.fwMajor, m.fwMinor);
-    ktcUiRowf(2, KTC_C_TEXT, "Caps      0x%02X   expected 0x%02X", id.caps, m.caps);
+    ktcUiRowf(1, KTC_C_TEXT, "Sketch    %-7s expected %s", sk, skWant);
+    ktcUiRowf(2, KTC_C_TEXT, "Library   %-7s expected %s", lib, libWant);
+    ktcUiRowf(3, KTC_C_TEXT, "Caps      0x%02X   expected 0x%02X", id.caps, m.caps);
     if (id.typeId != m.typeId) return ktcFail(c, "type 0x%02X, not 0x%02X", id.typeId, m.typeId);
     if (id.caps & KMC_CAP_FAULT) return ktcFail(c, "fault flag set in caps (0x%02X)", id.caps);
     if (id.caps != m.caps) return ktcFail(c, "caps 0x%02X, expected 0x%02X", id.caps, m.caps);
-    if (id.fwMajor != m.fwMajor || id.fwMinor < m.fwMinor)
-        return ktcFail(c, "fw %u.%u, tester expects %u.%u", id.fwMajor, id.fwMinor, m.fwMajor, m.fwMinor);
-    if (id.fwMinor > m.fwMinor) return ktcPass(c, "fw %u.%u (newer than tester)", id.fwMajor, id.fwMinor);
-    return ktcPass(c, "type 0x%02X fw %u.%u caps 0x%02X", id.typeId, id.fwMajor, id.fwMinor, id.caps);
+    // Each version X.Y.Z: the same major, and minor.patch at least the
+    // tester's. A 4-byte reply (no patch) or a 5-byte one (no sketch
+    // version) is firmware older than any tester of this version.
+    if (id.fwPatch == KMC_FW_PATCH_UNKNOWN)
+        return ktcFail(c, "lib %s, no patch byte (old firmware), tester expects %s", lib, libWant);
+    if (id.skMajor == KMC_SKETCH_VERSION_UNKNOWN)
+        return ktcFail(c, "no sketch version (old firmware), tester expects %s / lib %s", skWant, libWant);
+    uint16_t have = (uint16_t)(id.fwMinor << 8 | id.fwPatch), need = (uint16_t)(m.fwMinor << 8 | m.fwPatch);
+    if (id.fwMajor != m.fwMajor || have < need)
+        return ktcFail(c, "lib %s, tester expects %s", lib, libWant);
+    uint16_t skHave = (uint16_t)(id.skMinor << 8 | id.skPatch), skNeed = (uint16_t)(m.skMinor << 8 | m.skPatch);
+    if (id.skMajor != m.skMajor || skHave < skNeed)
+        return ktcFail(c, "sketch %s, tester expects %s", sk, skWant);
+    if (have > need || skHave > skNeed) return ktcPass(c, "fw %s (newer than tester)", both);
+    return ktcPass(c, "type 0x%02X fw %s caps 0x%02X", id.typeId, both, id.caps);
 }
 
 // ============================================================

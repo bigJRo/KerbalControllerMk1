@@ -49,7 +49,7 @@ The test firmware configures all three button modes so every library function ca
 | Test | Description |
 |---|---|
 | T00 | I2C bus scan — confirms module at 0x2A |
-| T01 | GET_IDENTITY — type ID, firmware version, capability flags |
+| T01 | GET_IDENTITY — type ID, library and sketch versions (X.Y.Z each, the 8-byte identity of I2C spec v2.22: Kerbal7SegmentCore 2.1.0, KC01_1880_TestFirmware 2.1.0), capability flags |
 | T03 | CMD_SET_VALUE — writes and reads back 4 values |
 | T04 | Brightness sweep — 5 intensity levels (visual) |
 | T06 | CMD_SLEEP / CMD_WAKE — state frozen, INT suppressed (visual) |

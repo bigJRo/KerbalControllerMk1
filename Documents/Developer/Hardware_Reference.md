@@ -2,8 +2,8 @@
 
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Version:** 2.11  
-**Date:** 2026-11-25  
+**Version:** 2.17  
+**Date:** 2026-11-28  
 **Document type:** Developer — Hardware
 
 ---
@@ -35,6 +35,12 @@
 | 2.9 | 2026-11-25 | **§9.2:** 50-pin pinout confirmed pin for pin against both board netlists (Ctrl Module CN2, Extension CN1, V2.0). **§15:** open item 3 closed. |
 | 2.10 | 2026-11-25 | **§6.1:** no fuse on the 12V input, by decision: the supply's own overcurrent protection covers short circuits; every ATtiny module and display driver has its own reverse diode and 1.5 A polyfuse. **§6.5:** VIN (yellow) indicator added to the status LED table. **§6.6:** fan headers checked against the board artwork: a standard 4-pin PC fan plug mates correctly; only the pin numbering is reversed. **§15:** open item 1 closed. |
 | 2.11 | 2026-11-25 | **§5.1:** Ctrl Module is now V2.1 (drawings Rev C): vertical USB-A downstream ports, 1×5 test port TP1, a blue +5V status LED, all status LEDs dimmed to about 0.5 mA, USB connector shells on GND; resistors renumbered (RST series now R14, EXT_INT_1 pull-up R15 and series R16). **§5.4:** Throttle drawings Rev C: motor-direction LED resistors R15 / R16 are 10 kΩ (were 1 kΩ). **§6.5:** status LED table and test port. **§7.3, §7.5, §7.6:** USB-A ports and shell grounding. **§8.4:** designators updated. |
+| 2.12 | 2026-11-25 | **§5.4:** the panel joystick is the JH-DX400B-R4 (4-axis), as fitted on panels A2 and B2; three axes are wired to terminal U6 and the fourth is not used (was given as JH-D202X-R4, 3-axis). |
+| 2.13 | 2026-11-26 | **§13.2:** the identity response is 8 bytes (I2C spec v2.22 §6): the library patch appended at byte 4, so every module reports X.Y.Z, and the module sketch's own X.Y.Z at bytes 5–7 (a standalone sketch reports its version in both places); a controller accepts the 5-byte form (sketch version unknown) and the old 4-byte form (patch unknown too, shown as X.Y). |
+| 2.14 | 2026-11-26 | **§2:** KSP 1.12.5 and the tested mod versions (Kerbal Simpit Revamped 2.4.0, AGX 2.4.1.4, Hullcam VDS Continued 0.2.2.6, ARP 2.11.0.0), replacing "Current". The 12 V input on the rear panel is a 5.5 × 2.1 mm barrel jack, Adafruit 5607 (the wiring and power figures said 2.5 mm). **§5.4:** the panel joystick is the SaiDian JH-D400X-R4 (owner; JH-DX400B-R4 in 2.12 came from the Fusion part name). |
+| 2.15 | 2026-11-27 | **§2:** the optional mods and their tested versions, TAC Life Support 0.18.0.0 and Community Resource Pack 112.01 (owner). |
+| 2.16 | 2026-11-28 | Ctrl Module drawings Rev D (pre-order review, `Preorder_Review.md` 1.1–1.6 and 1.11): **§5.1, §6.1:** 12 V input on a 2-way 5.08 mm screw terminal DC1 (DORABO DB127S, C2997519), wired from the rear-panel jack; the DC-042Z 2.5 mm jack did not take the 5.5 × 2.1 mm plug. **§6.2:** load switch Q1 IRF4905S (was IRF9540NS), latch transistor Q2 2N7002 (was AO3400A), hold resistor R12 150 kΩ (was 300 kΩ): hold to turn off about 3.6 s. MPM3610 EN pulled up from 12 V through 100 kΩ R2 (was tied to 12 V), input capacitor 10 µF, output 22 µF. Power-button lamp feed fused: PTC F1 (C269108) between VCC and H1-2. Resistors renumbered: the new R2 moves R2–R26 up by one. **§6.5, §8.4:** designators updated (LED resistors R8–R11; RST series R15; EXT_INT_1 pull-up R16, series R17). |
+| 2.17 | 2026-11-28 | Pre-order review converter fix released on three more boards: 7" TFT Display Driver drawings Rev C, 2" TFT Display Driver Rev C, Panel Hub Rev B. MPM3610 EN pulled up from 12 V through 100 kΩ (was tied to 12 V), 10 µF input and 22 µF output capacitors. **§5.2:** the Panel Hub also gets a 10 kΩ V_3P3 bleeder (R5), since the AP2112K cannot sink leakage back from the modules. |
 
 ---
 
@@ -72,12 +78,16 @@ Version 2.0 was rebuilt from `Documents/Developer/Hardware_Inventory.md`, the wo
 
 ## 2. Required KSP Mods
 
+The controller is built and tested with Kerbal Space Program 1.12.5 and these mod versions (owner, 2026-11-26):
+
 | Mod | Version | Purpose |
 |-----|---------|---------|
-| KerbalSimpit | v2.4.0 | Serial communication between KSP and the master controller |
-| AGX (Action Groups Extended) | Current | Expands custom action groups to 256 (required for full button mapping) |
-| Hullcam VDS Continued | Current | Camera cycling support for ENC2 encoder |
-| Alternate Resource Panel (ARP) | Current | Most Resource Display resources and the BUS VOLTAGE warning |
+| Kerbal Simpit Revamped | 2.4.0 | Serial communication between KSP and the master controller |
+| AGX (Action Groups Extended) | 2.4.1.4 | Expands custom action groups to 256 (required for full button mapping) |
+| Hullcam VDS Continued | 0.2.2.6 | Camera cycling support for ENC2 encoder |
+| Alternate Resource Panel (ARP) | 2.11.0.0 | Most Resource Display resources and the BUS VOLTAGE warning |
+| TAC Life Support (optional) | 0.18.0.0 | Resource Display life-support meters and the Annunciator's LIFE SUPPORT tile |
+| Community Resource Pack (optional) | 112.01 | Resource Display CRP meters (also needs two `CustomResourceMessages` blocks in KerbalSimpit's `Settings.cfg`) |
 
 ---
 
@@ -235,7 +245,7 @@ Both switch groups are on Wide Button Modules. Each switch closes from a +5 V te
 | B18 | U16-4 | SCE | NORM / AUX | Latching |
 | B19 | U16-3 | UPTLM | INHIB / XMIT | Latching |
 | B20 | U17-4 | LTG | NORM / TEST | Momentary |
-| B21 | U17-3 | A/P | INHIB / ARM | Latching |
+| B21 | U17-3 | A/P | INHIB / ENAB | Latching |
 | B22 | U17-2 | ENGINE | SAFE / ARM | Latching |
 | B23 | U17-1 | THRTL | STD / FINE | Latching |
 
@@ -260,18 +270,19 @@ Both switch groups are on Wide Button Modules. Each switch closes from a +5 V te
 
 | Board | Schematic | PCB | Rev | Microcontroller | Function |
 |-------|-----------|-----|-----|-----------------|----------|
-| Ctrl Module | KC-01-1701 | KC-01-1702 | V2.1 | Teensy 4.1 | Master controller, soft latch power, INA228 power monitor, EMC2101 fan controller, 2× LTC4311 (one for SDA_BUS, one for SDA_EXT, each with 4.7kΩ pull-ups to 3.3V), USB Hub [2× CH334F cascaded, single upstream USB-C, 6 downstream vertical USB-A + 1 expansion USB-C]. 47Ω series (R14) on the RST output; 47Ω series (R16) and 4.7kΩ pull-up to 3.3V (R15) on EXT_INT_1; EXT_INT_2 has no series resistor or pull-up. No status display is fitted (the Teensy SPI pins are not connected). Four power LEDs and a 1×5 test port TP1 (§6.5) |
+| Ctrl Module | KC-01-1701 | KC-01-1702 | V2.1 | Teensy 4.1 | Master controller, soft latch power, INA228 power monitor, EMC2101 fan controller, 2× LTC4311 (one for SDA_BUS, one for SDA_EXT, each with 4.7kΩ pull-ups to 3.3V), USB Hub [2× CH334F cascaded, single upstream USB-C, 6 downstream vertical USB-A + 1 expansion USB-C]. 47Ω series (R15) on the RST output; 47Ω series (R17) and 4.7kΩ pull-up to 3.3V (R16) on EXT_INT_1; EXT_INT_2 has no series resistor or pull-up. No status display is fitted (the Teensy SPI pins are not connected). Four power LEDs and a 1×5 test port TP1 (§6.5) |
 | Ctrl Module Extension | KC-01-1711 | KC-01-1712 | V2.0 | N/A | Passive: splits the 50-pin interboard cable to the B side (B1, B2 panel connectors), a second fan header, and the expansion terminal. No active components or protection; every signal passes straight through |
 
 **Ctrl Module connectors:**
 
 | Connector | What | Notes |
 |-----------|------|-------|
+| DC1 | 12 V input, 2-way 5.08 mm screw terminal (DB127S) | 1 +12 V (VIN), 2 GND; from the rear-panel jack (§6.1) |
 | CN1 | Fan, 4-pin | PWM + tach; the only fan that reports RPM (§6.6) |
 | CN2 | 50-pin interboard, to the Extension | §9 |
 | CN3 | A2 panel connection (34-pin, 8 lines) | INT_1–INT_8, INT_SAFE (§11) |
 | CN4 | A1 panel connection (34-pin, 4 lines) | INT_9–INT_12, INT_SAFE2 (§11) |
-| H1 | Power switch header | Soft-latch power button (§6.2) |
+| H1 | Power switch header | Soft-latch power button (§6.2); lamp + on pin 2 through PTC F1 |
 | H4 | EMC2101 external temperature sensor | Nothing fitted (§6.6) |
 | USBC1 | Upstream USB-C | §7.4 |
 | USB1–USB6, USBC2 | Downstream USB | §7.6, §7.7 |
@@ -290,7 +301,7 @@ Both switch groups are on Wide Button Modules. Each switch closes from a +5 V te
 
 | Board | Schematic | PCB | Rev | Used on | Function |
 |-------|-----------|-----|-----|---------|----------|
-| Panel Hub | KC-01-1731 | KC-01-1732 | V2.1 | A2, B2 | Input-panel hub: CN1 34-pin panel connector (8 lines), 8 module slots P1–P8 (16-pin), one safe-switch terminal (U4). Local MPM3610 (5V) + AP2112K (3.3V) for the slots' V_3P3 pin and the safe-switch circuit |
+| Panel Hub | KC-01-1731 | KC-01-1732 | V2.1 | A2, B2 | Input-panel hub: CN1 34-pin panel connector (8 lines), 8 module slots P1–P8 (16-pin), one safe-switch terminal (U4). Local MPM3610 (5V) + AP2112K (3.3V) for the slots' V_3P3 pin and the safe-switch circuit; 10 kΩ bleeder R5 on V_3P3 (drawings Rev B) |
 | 7" TFT Display Driver (as hub) | KC-01-1911 | KC-01-1912 | V2.1 | A1 (Info Display 1), B1 (Resource Display) | A 7" display (§5.3) that also acts as its panel's hub: CN1 34-pin panel connector (4 lines), 3 module slots P2–P4 (16-pin), one safe-switch terminal |
 
 **Retired:** Display Hub (KC-01-1721 / 1722). Its job is done by the 7" TFT Display Driver.
@@ -336,7 +347,7 @@ The 7" driver's Teensy uses Wire2 (SCL2 = 24, SDA2 = 25) for the module bus, pin
 | Button Module | KC-01-1801 | KC-01-1802 | V2.1 | ATtiny816 | 12 | 4 | B0–B11 on-board RGB buttons (one NeoPixel chain). B12, B13 on terminal CN2 (1–2 +5 V, 3 B12, 4 B13); B14, B15 on terminal CN1 (1 B15, 2 B14, 3–4 +5 V). Used for UI, Action, Stability, Time and AUX Control |
 | Wide Button Module | KC-01-1811 | KC-01-1812 | V2.1 | ATtiny816 | 12 | 8 | B0–B11 on-board RGB buttons; B12–B15 not connected. B16–B19 on terminal U16 (1–2 +5 V, 3 B19, 4 B18, 5 B17, 6 B16); B20–B23 on terminal U17 (1 B23, 2 B22, 3 B21, 4 B20, 5–6 +5 V); DB127S-5.08-6P terminals. Used for Function and Vehicle Control (Switch Groups 1 / 2) |
 | Throttle Module | KC-01-1871 | KC-01-1872 | V2.1 | ATtiny816 | N/A | 5 (4 used) | RSA0N11M9A0J 10k motorized slide potentiometer (wiper to the ATtiny), L293D H-bridge on its own 9V supply (MPM3610), AT42QT1010 touch sensor on the fader track, direction LEDs (10 kΩ each, about 0.4 mA). Five 4-pin illuminated-switch terminals (pin 1 +5 V, 2 input, 3 +5 V lamp, 4 lamp return): U5 THRTL_ENA, U7 THRTL_100 (FULL), U8 THRTL_UP (THRTL +), U10 THRTL_DOWN (THRTL −), U11 THRTL_00 (IDLE). All five lamps share one enable (LED_ENA). THRTL_ENA is not wired in the final build and is unused by the firmware |
-| Joystick Module | KC-01-1831 | KC-01-1832 | V2.1 | ATtiny816 | 2 + stick button | N/A | 2× NeoPixel RGB buttons (BTN01, BTN02). JH-D202X-R4 3-axis stick on 6-pin terminal U6: 6 +5 V, 5 AXIS1, 4 AXIS2, 3 AXIS3, 2 BUTTON_JOY, 1 GND. Stick button from pin 6 (+5 V) to pin 2; R13 10 kΩ pull-down. BTN01 on PC2, BTN02 on PB3 |
+| Joystick Module | KC-01-1831 | KC-01-1832 | V2.1 | ATtiny816 | 2 + stick button | N/A | 2× NeoPixel RGB buttons (BTN01, BTN02). SaiDian JH-D400X-R4 4-axis stick (three axes used; the fourth is not wired) on 6-pin terminal U6: 6 +5 V, 5 AXIS1, 4 AXIS2, 3 AXIS3, 2 BUTTON_JOY, 1 GND. Stick button from pin 6 (+5 V) to pin 2; R13 10 kΩ pull-down. BTN01 on PC2, BTN02 on PB3 |
 | 7-Segment Display Module | KC-01-1841 | KC-01-1842 | V2.1 | ATtiny816 | 3 + encoder push | N/A | MAX7219 + FJ4401AG 4-digit display; rotary encoder with push button; three buttons, each with an SK6812 LED. Used for GPWS and Pre-Warp Time |
 | Dual Encoder | KC-01-1861 | KC-01-1862 | V2.1 | ATtiny816 | 2 encoder pushes | N/A | Two PEC11R-4220F-S0024 encoders on the board (SW1 ENC1, SW2 ENC2): A / B RC-filtered (10 kΩ pull-ups, 10 nF), pushes active-high with 10 kΩ pull-downs. No LEDs, no safe-switch terminal. V2.0 used two Encoder boards (§5.5) on 5-pin headers and had a terminal driving slot pin 16 |
 
@@ -371,6 +382,7 @@ The 7" driver's Teensy uses Wire2 (SCL2 = 24, SDA2 = 25) for the module bus, pin
 |-----------|-------|
 | Input voltage | 12V DC |
 | Rated current | 10A |
+| Input connector | Rear panel: 5.5 × 2.1 mm jack, Adafruit 5607 (barrel contacts about 5 A class). Its leads, cut from the inner plug and fitted with 0.5 mm² ferrules, go to the Ctrl Module's screw terminal DC1: pin 1 +12 V (red, centre), pin 2 GND (black). No reverse-polarity protection: check the polarity with a meter before connecting |
 | Typical system load | see Power Budget (interim ~3.30A / 39.5W @ 12V) |
 | Peak system load | see Power Budget (interim ~5.82A / 69.8W @ 12V) |
 | Input protection | None on the Ctrl Module: no fuse between DC1 and the power latch, by decision. The supply's own overcurrent protection limits a short. Each ATtiny module and display driver has an SS34 reverse diode and a 1.5 A polyfuse on its input; the Panel Hubs, Ctrl Module and Extension do not. Use a supply with short-circuit protection |
@@ -379,7 +391,7 @@ The 7" driver's Teensy uses Wire2 (SCL2 = 24, SDA2 = 25) for the module bus, pin
 
 ### 6.2 Power On/Off
 
-A soft-latching power circuit on the Ctrl Module controls the 12V main bus. A single momentary pushbutton on Panel A1, wired to the Ctrl Module power switch header H1, turns power on with a short press and turns power off with a 3-second hold. The circuit uses a P-channel MOSFET (IRF9540N, D2PAK) as the load switch, with an RC network for hold-to-off timing. No microcontroller is required for power on/off — the circuit is fully analog. It has no Teensy pin: the master can neither see the button nor switch the controller off.
+A soft-latching power circuit on the Ctrl Module controls the 12V main bus. A single momentary pushbutton on Panel A1, wired to the Ctrl Module power switch header H1, turns power on with a short press and turns power off with a hold of about 3.6 s (2.7–5 s over part tolerances; bench-check). The circuit uses a P-channel MOSFET (Q1, IRF4905S, D2PAK, 20 mΩ) as the load switch and a 2N7002 (Q2) as the latch transistor, with an RC network (R12 150 kΩ, C9 10 µF) for hold-to-off timing. The button lamp's feed, H1-2, comes from the switched 12 V (VCC) through F1, a 1206 PTC (100 mA hold, 270 mA trip, 30 V, C269108), so a short in the button lead trips F1 instead of drawing on the full supply. No microcontroller is required for power on/off — the circuit is fully analog. It has no Teensy pin: the master can neither see the button nor switch the controller off.
 
 ### 6.3 Power Rails
 
@@ -399,10 +411,10 @@ An INA228 high-side current/power monitor on the Ctrl Module measures the 12V ra
 
 | LED | Color | LCSC Part | Rail Monitored | Series Resistor |
 |-----|-------|-----------|----------------|----------------|
-| LED1 | Green | KT-0805G (C2297) | V_12 (after the power latch) | 20kΩ (R7, C4184) |
-| LED2 | Blue | KT-0805B (C2293) | +5V | 4.7kΩ (R8, C23162) |
-| LED3 | Red | KT-0805R (C2295) | V_3P3 | 2.7kΩ (R9, C13167) |
-| LED4 | Yellow | KT-0805Y (C2296) | VIN (DC jack, before the power latch) | 20kΩ (R10, C4184) |
+| LED1 | Green | KT-0805G (C2297) | V_12 (after the power latch) | 20kΩ (R8, C4184) |
+| LED2 | Blue | KT-0805B (C2293) | +5V | 4.7kΩ (R9, C23162) |
+| LED3 | Red | KT-0805R (C2295) | V_3P3 | 2.7kΩ (R10, C13167) |
+| LED4 | Yellow | KT-0805Y (C2296) | VIN (input terminal DC1, before the power latch) | 20kΩ (R11, C4184) |
 
 All four are 0805 and run at about 0.5 mA, as dim indicators (V2.0 ran three of them at about 5 mA). They are power indicators only; the master has no status LED outputs.
 
@@ -617,8 +629,8 @@ The LTC4311 actively drives rising edges, compensating for the total capacitive 
 | Segment | Component | Location |
 |---------|-----------|----------|
 | Source protection (planned) | 47Ω series resistor | Expansion Routing Board, between Teensy 4.1 GPIO output and terminal block |
-| Receiver series (as built) | 47Ω series resistor (R16) | Ctrl Module PCB, between 50-pin IDC pin and Teensy 4.1 GPIO input (pin 33) |
-| Receiver pull-up (as built) | 4.7kΩ to 3.3V (R15) | Ctrl Module PCB, on the same line |
+| Receiver series (as built) | 47Ω series resistor (R17) | Ctrl Module PCB, between 50-pin IDC pin and Teensy 4.1 GPIO input (pin 33) |
+| Receiver pull-up (as built) | 4.7kΩ to 3.3V (R16) | Ctrl Module PCB, on the same line |
 
 Signal path: Expansion Teensy 4.1 → 47Ω → terminal block → GX16 cable → terminal block → 50-pin IDC → 4.7kΩ pull-up + 47Ω series → Ctrl Module Teensy 4.1 GPIO input.
 
@@ -637,7 +649,7 @@ The v1.x design called for a 47Ω source resistor on EXT_INT_2 at the Ctrl Modul
 
 | Segment | Component | Location |
 |---------|-----------|----------|
-| Source protection (as built) | 47Ω series resistor (R14) | Ctrl Module PCB, between Teensy 4.1 pin 2 and the IDC connectors |
+| Source protection (as built) | 47Ω series resistor (R15) | Ctrl Module PCB, between Teensy 4.1 pin 2 and the IDC connectors |
 | Receiver pull-up (planned) | 10kΩ to 3.3V | Expansion Routing Board, between terminal block and RC filter input |
 | Receiver RC filter (planned) | 100Ω series + 100nF to GND | Expansion Routing Board, between pull-up node and Teensy 4.1 RST pin |
 
@@ -1009,14 +1021,20 @@ The module must operate as an I2C target at 400kHz (Fast Mode). The I2C address 
 All conformant modules must implement the following regardless of module type.
 
 **Identity Response**
-The module must respond to `CMD_GET_IDENTITY` (0x01) with a 4-byte identity packet:
+The module must respond to `CMD_GET_IDENTITY` (0x01) with an 8-byte identity packet (I2C spec §6, v2.22):
 
 ```
 Byte 0:  Module Type ID  — unique value from the KCMk1 module registry
-Byte 1:  Firmware version major
-Byte 2:  Firmware version minor
+Byte 1:  Library version major
+Byte 2:  Library version minor
 Byte 3:  Capability flags  — KMC_CAP_* bitmask (0x00 if no optional capabilities)
+Byte 4:  Library version patch
+Byte 5:  Sketch version major
+Byte 6:  Sketch version minor
+Byte 7:  Sketch version patch
 ```
+
+Each version is a full X.Y.Z from its firmware's version constants. A library-based module reports its library's version at bytes 1, 2 and 4 and the module sketch's own version (`SKETCH_VERSION_*`, passed to the library in `setup()`) at bytes 5–7, so a change to the sketch alone can be seen from the bus. A standalone sketch with no library reports its own version in both places. Firmware before spec v2.22 sent bytes 0–3 only, and a 5-byte form had no sketch version; a controller accepts both and treats what is missing (or reads 0xFF) as unknown.
 
 **Universal Packet Header**
 Every response packet sent by the module must begin with the 3-byte universal header:
@@ -1044,7 +1062,7 @@ The module must handle all base commands:
 
 | Command | Value | Required Behavior |
 |---------|-------|------------------|
-| `CMD_GET_IDENTITY` | 0x01 | Return 4-byte identity packet |
+| `CMD_GET_IDENTITY` | 0x01 | Return 8-byte identity packet |
 | `CMD_SET_LED_STATE` | 0x02 | Apply nibble-packed LED state to outputs |
 | `CMD_SET_BRIGHTNESS` | 0x03 | Set ENABLED state backlight brightness |
 | `CMD_BULB_TEST` | 0x04 | 0x01: all outputs full white/on. 0x00: stop. Fires in any lifecycle state |

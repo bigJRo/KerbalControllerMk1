@@ -3,10 +3,10 @@
   "name": "Panel Hub",
   "title": "Panel Hub",
   "subtitle": "Kerbal Controller Mk1 · Main enclosure",
-  "rev": "A",
+  "rev": "B",
   "board_version": "V2.1",
-  "date": "2026-11-24",
-  "status": "DRAFT",
+  "date": "2026-11-28",
+  "status": "RELEASED",
   "created_by": "J. Rostoker",
   "approved_by": "J. Kerman",
   "package_docs": "1234",
@@ -16,12 +16,18 @@
       "Supersedes V2.0; board V2.1 (U4 pin 1 to +5V); KC drawing frame",
       "2026-11-24",
       "J. Kerman"
+    ],
+    [
+      "B",
+      "MPM3610 EN pull-up R3; 10 µF in, 22 µF out; 3.3 V bleeder R5",
+      "2026-11-28",
+      "J. Kerman"
     ]
   ],
-  "sch_pdf": "SCH_KC-01-1731_Panel_Hub_2026-11-23.pdf",
-  "gerber_zip": "Gerber_KC-01-1732_Panel_Hub_PCB_2026-11-23.zip",
-  "bom_csv": "BOM_KC-01-1732_Panel_Hub_PCB_2026-11-23.csv",
-  "pnp_csv": "PickAndPlace_KC-01-1732_Panel_Hub_PCB_2026-11-23.csv",
+  "sch_pdf": "SCH_KC-01-1731_Panel_Hub_2026-11-28.pdf",
+  "gerber_zip": "Gerber_KC-01-1732_Panel_Hub_PCB_2026-11-28.zip",
+  "bom_csv": "BOM_KC-01-1732_Panel_Hub_PCB_2026-11-28.csv",
+  "pnp_csv": "PickAndPlace_KC-01-1732_Panel_Hub_PCB_2026-11-28.csv",
   "sch_scale": 0.45,
   "sch_sheets": [
     {
@@ -48,7 +54,7 @@
                 261,
                 451
               ],
-              "label": "Safe-switch terminal (U4) and INT_SAFE divider (R3, R4)"
+              "label": "Safe-switch terminal (U4) and INT_SAFE divider (R6, R4)"
             }
           ],
           [
@@ -56,18 +62,18 @@
               "page": 1,
               "crop": [
                 38,
-                206,
-                308,
+                192,
+                324,
                 263
               ],
-              "label": "Power: 12 V to 5 V (U1) to 3.3 V (U2)"
+              "label": "Power: 12 V to 5 V (U1) to 3.3 V (U2); 3.3 V bleeder R5 (10 kΩ)"
             }
           ]
         ],
         [
           [
             {
-              "page": 2,
+              "page": 3,
               "crop": [
                 80,
                 78,
@@ -79,7 +85,7 @@
           ],
           [
             {
-              "page": 3,
+              "page": 2,
               "crop": [
                 109,
                 114,
@@ -239,10 +245,10 @@
   "place_polarised": [],
   "place_label_size": 1.4,
   "place_notes": [
-    "1. Every part is on the bottom side: the SMT parts U1, U2, C1–C5, R1–R4 and the through-hole connectors CN1, P1–P8 and U4 (soldered from the top). The top side has no parts.",
+    "1. Every part is on the bottom side: the SMT parts U1, U2, C1–C5, R1–R6 and the through-hole connectors CN1, P1–P8 and U4 (soldered from the top). The top side has no parts.",
     "2. The bottom view is drawn as seen holding the board bottom side up (flipped left to right), so the datum is at the top right.",
     "3. Red dot = pin 1 of every part with more than two pins. These match the silkscreen marks.",
-    "4. U4 (silkscreen names): 1 SW_P = +5V, 2 SW_N = V_EN, 3 LED_P = V_EN, 4 LED_N = GND, 5 BTN_P = V_EN, 6 BTN_N = input to INT_SAFE through R3 / R4. Arming switch across SW_P / SW_N, its lamp across LED_P / LED_N, push-button across BTN_P / BTN_N.",
+    "4. U4 (silkscreen names): 1 SW_P = +5V, 2 SW_N = V_EN, 3 LED_P = V_EN, 4 LED_N = GND, 5 BTN_P = V_EN, 6 BTN_N = input to INT_SAFE through R6 / R4. Arming switch across SW_P / SW_N, its lamp across LED_P / LED_N, push-button across BTN_P / BTN_N.",
     "5. Part centres, rotations and part numbers are in the placement table (last sheet), measured from the datum (top view)."
   ],
   "mount_callout": {

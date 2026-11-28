@@ -1,7 +1,7 @@
 /**
  * @file        KerbalModuleCommon.h
- * @version     1.8.0
- * @date        2026-10-31
+ * @version     1.9.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -253,8 +253,54 @@ static const RGBColor KMC_MAGENTA       = { 255,   0, 255 };
 /** @brief Universal data-packet header: status byte, type ID, tx counter. */
 #define KMC_HEADER_SIZE          3
 
-/** @brief Identity response: type ID, fw major, fw minor, capability flags. */
-#define KMC_IDENTITY_SIZE        4
+/** @brief Identity response (I2C spec §6, v2.22), 8 bytes:
+ *           0      type ID
+ *           1, 2   library version major, minor
+ *           3      capability flags
+ *           4      library version patch
+ *           5..7   sketch version major, minor, patch
+ *         A library-based module reports its library's version at 1/2/4 and
+ *         the module sketch's own version at 5..7 (the sketch passes it to its
+ *         library: kbc.setSketchVersion(), kjcSetSketchVersion(),
+ *         k7scSetSketchVersion()). A standalone sketch (Throttle, Dual
+ *         Encoder) has no library and reports its sketch version in both
+ *         places. New bytes are appended, so the capability flags stay at
+ *         byte 3 and a reader of a shorter form still finds its bytes. */
+#define KMC_IDENTITY_SIZE        8
+
+/** @brief The 5-byte identity: type, major, minor, caps, patch, with no
+ *         sketch version. A reader accepts it and treats the sketch version
+ *         as unknown. */
+#define KMC_IDENTITY_SIZE_V2     5
+
+/** @brief The identity response before I2C spec v2.22: no patch byte and no
+ *         sketch version. A reader accepts this many bytes and treats the
+ *         patch and the sketch version as unknown. */
+#define KMC_IDENTITY_SIZE_V1     4
+
+/** @brief Identity byte offsets (I2C spec §6). FW_* is the library version
+ *         (the sketch version for a standalone sketch), SKETCH_* the module
+ *         sketch's own version. */
+#define KMC_IDENT_TYPE           0
+#define KMC_IDENT_FW_MAJOR       1
+#define KMC_IDENT_FW_MINOR       2
+#define KMC_IDENT_CAPS           3
+#define KMC_IDENT_FW_PATCH       4
+#define KMC_IDENT_SKETCH_MAJOR   5
+#define KMC_IDENT_SKETCH_MINOR   6
+#define KMC_IDENT_SKETCH_PATCH   7
+
+/** @brief Patch value meaning "not reported": the 4-byte form sent no patch
+ *         byte, or the byte read 0xFF (an idle bus after a 4-byte reply).
+ *         Show such a version as X.Y. A module never reports patch 255. */
+#define KMC_FW_PATCH_UNKNOWN     0xFF
+
+/** @brief Sketch version byte meaning "not reported": a 4- or 5-byte reply
+ *         carries no sketch version, bytes 5..7 then read 0xFF on the idle
+ *         bus, and a library sends 0xFF until the sketch sets its version.
+ *         The sketch version is unknown when its major (byte 5) is 0xFF; show
+ *         it as "-". A sketch never reports a version part of 255. */
+#define KMC_SKETCH_VERSION_UNKNOWN 0xFF
 
 /** @brief CMD_SET_LED_STATE payload: 16 positions × 4-bit nibble = 8 bytes. */
 #define KMC_LED_PAYLOAD_SIZE     8

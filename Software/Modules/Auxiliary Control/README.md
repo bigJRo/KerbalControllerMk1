@@ -1,12 +1,12 @@
 # KCMk1_Auxiliary_Control
 
 **Module:** Auxiliary Control (AUX CTRL)  
-**Version:** 2.0  
-**Date:** 2026-10-27  
+**Version:** 2.2  
+**Date:** 2026-11-26  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1802 Button Module Base v1.1  
-**Library:** KerbalButtonCore v2.2.0  
+**Library:** KerbalButtonCore v2.5.0 or later  
 
 ---
 
@@ -29,6 +29,7 @@ As with Action Control and UI Control, all functions are resolved controller-sid
 | I2C Address | `0x26` |
 | Module Type ID | `0x07` (KMC_TYPE_AUX_CTRL) |
 | Capability Flags | `0x00` (core states only) |
+| Identity | 8 bytes (I2C spec §6): the KerbalButtonCore version, 2.5.1, at bytes 1/2/4 and this sketch's own version, 2.2.0, at bytes 5–7 (`SKETCH_VERSION_*` in the sketch, passed with `kbc.setSketchVersion()`) |
 | Extended States | No |
 | NeoPixel Buttons | 12 (KBC indices 0–11) |
 | Not Installed | KBC indices 12–15 (no-connect) |
@@ -227,7 +228,9 @@ Values for the B12–B15 nibbles are accepted but ignored (no LED hardware)
 
 Identity response (controller → module, `CMD_GET_IDENTITY`):
 ```
-Module Type ID 0x07 · firmware major/minor · capability flags 0x00
+Module Type ID 0x07 · library major/minor · capability flags 0x00 · library patch
+· sketch major/minor/patch
+(8 bytes, I2C spec §6; the library is KerbalButtonCore 2.5.1, the sketch 2.2.0)
 ```
 
 ---
@@ -239,3 +242,4 @@ Module Type ID 0x07 · firmware major/minor · capability flags 0x00
 | 1.0 | 2026-06-28 | Initial release. Replaces the former standalone 6-button EVA module (KC-01-1852) with a standard 12-button KerbalButtonCore module on the KC-01-1802 Button Module Base. Adds Cruise Control (B8) and the control-point cluster (B10 CP Toggle PRI/ALT, B11 CP Docking Port). KerbalButtonCore v2.1.0, I2C protocol v2.6; core LED states only (no extended states). |
 | 1.1 | 2026-06-28 | CP Toggle (B10) now renders the canonical CORAL Alternate colour via the new `KBC_LED_ACTIVE_ALT` state (KerbalButtonCore v2.2 / KerbalModuleCommon v1.6), using the sketch's `altColors` array — ROSE for Primary (`ACTIVE`), CORAL for Alternate (`ACTIVE_ALT`). No longer ROSE-only. |
 | 2.0 | 2026-10-27 | B8 is UN DOCK (GOLD, base CAG 37 toggle, all modes), replacing Cruise Control. B10 is control point PRI (ROSE, base CAG 35) and B11 control point ALT (PINK, base CAG 36), two separate buttons replacing the CP Toggle PRI / ALT and CP Docking Port scheme (Module UI Reference v6.0 §9.7). The CORAL alternate colour, the `altColors` array and the use of `KBC_LED_ACTIVE_ALT` are removed. |
+| 2.2 | 2026-11-26 | The identity reports this sketch's own version, 2.2.0, at bytes 5–7 next to the KerbalButtonCore version (I2C spec v2.22 §6), so a change to the sketch alone can be seen from the bus: `SKETCH_VERSION_*` constants added, passed to the library with `kbc.setSketchVersion()` in `setup()`. The sketch header had read 2.1.0 since the 2.0 change here; 2.2.0 is above both. Needs KerbalButtonCore 2.5.0 and KerbalModuleCommon 1.9.0. |

@@ -1,0 +1,959 @@
+{
+  "base": "KC-01-106",
+  "name": "Top Panel",
+  "title": "Top Panel",
+  "subtitle": "Kerbal Controller Mk1 · Main enclosure",
+  "rev": "A",
+  "board_version": "Top",
+  "version_label": "Panel",
+  "date": "2026-11-26",
+  "status": "RELEASED",
+  "created_by": "J. Rostoker",
+  "approved_by": "J. Kerman",
+  "package_docs": "01",
+  "doc_types": {
+    "0": [
+      "ASSY",
+      "Assembly Drawing"
+    ],
+    "1": [
+      "PART",
+      "Part Control Drawing",
+      ""
+    ]
+  },
+  "doc_title": {
+    "0": "Top Panel Complete",
+    "1": "Top Cover Plate"
+  },
+  "doc_name": {
+    "0": "Top Panel Complete",
+    "1": "Top Cover Plate"
+  },
+  "doc_status": {
+    "0": "RELEASED",
+    "1": "RELEASED"
+  },
+  "revisions": [
+    [
+      "A",
+      "KC frame; speakers moved here from A1; plate renumbered KC-01-1061",
+      "2026-11-26",
+      "J. Kerman"
+    ]
+  ],
+  "view_docs": {
+    "0": {
+      "pdf": "Fusion_KC-01-1060_Top_Panel_Complete_2026-11-25.pdf",
+      "line_scale": 0.35,
+      "sheets": [
+        {
+          "scale": 0.25,
+          "views": [
+            {
+              "page": 1,
+              "src": [
+                181.2,
+                53.8,
+                399.9,
+                76.6
+              ],
+              "k": 1.0,
+              "label": "FRONT VIEW",
+              "auto_masks": true,
+              "at": [
+                184,
+                52
+              ],
+              "masks": []
+            },
+            {
+              "page": 1,
+              "src": [
+                116.9,
+                53.8,
+                127.3,
+                76.6
+              ],
+              "k": 1.0,
+              "label": "SIDE VIEW",
+              "auto_masks": true,
+              "at": [
+                161.6,
+                52.0
+              ],
+              "masks": []
+            },
+            {
+              "page": 1,
+              "src": [
+                181.2,
+                165.4,
+                400.1,
+                175.8
+              ],
+              "k": 1.0,
+              "label": "TOP VIEW",
+              "auto_masks": true,
+              "at": [
+                184.0,
+                88.8
+              ],
+              "masks": []
+            },
+            {
+              "page": 1,
+              "src": [
+                54.1,
+                145.6,
+                210.9,
+                253.3
+              ],
+              "k": 1.0,
+              "at": [
+                26,
+                104
+              ],
+              "label": "ISOMETRIC VIEW",
+              "auto_masks": true,
+              "masks": [
+                [
+                  182.37,
+                  171.38,
+                  211.44,
+                  174.17
+                ]
+              ]
+            }
+          ],
+          "notes": true
+        },
+        {
+          "scale": 0.25,
+          "views": [
+            {
+              "page": 2,
+              "src": [
+                177.2,
+                69.7,
+                395.9,
+                92.5
+              ],
+              "k": 1.0,
+              "label": "REAR VIEW",
+              "auto_masks": true,
+              "at": [
+                184,
+                52
+              ],
+              "masks": []
+            },
+            {
+              "page": 2,
+              "src": [
+                108.5,
+                69.7,
+                118.9,
+                92.5
+              ],
+              "k": 1.0,
+              "label": "SIDE VIEW",
+              "auto_masks": true,
+              "at": [
+                161.6,
+                52.0
+              ],
+              "masks": []
+            },
+            {
+              "page": 2,
+              "src": [
+                177.2,
+                167.4,
+                395.9,
+                177.9
+              ],
+              "k": 1.0,
+              "label": "TOP VIEW",
+              "auto_masks": true,
+              "at": [
+                184.0,
+                88.8
+              ],
+              "masks": []
+            },
+            {
+              "page": 2,
+              "src": [
+                33.7,
+                152.1,
+                190.5,
+                259.7
+              ],
+              "k": 1.0,
+              "at": [
+                26,
+                104
+              ],
+              "label": "ISOMETRIC VIEW (REAR)",
+              "auto_masks": true,
+              "masks": [
+                [
+                  178.1,
+                  169.12,
+                  191.05,
+                  172.04
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "scale": 0.25,
+          "parts_list": true,
+          "views": [
+            {
+              "page": 3,
+              "src": [
+                76.5,
+                79.7,
+                367.2,
+                134.2
+              ],
+              "k": 1.0,
+              "at": [
+                66,
+                88
+              ],
+              "label": "FRONT"
+            },
+            {
+              "page": 4,
+              "src": [
+                68.7,
+                80.9,
+                359.4,
+                153.2
+              ],
+              "k": 1.0,
+              "at": [
+                66,
+                152
+              ],
+              "label": "REAR",
+              "label_y": 134.0
+            }
+          ]
+        }
+      ],
+      "parts": [
+        {
+          "qty": 1,
+          "pn": "KC-01-1061",
+          "name": "Top Cover Plate",
+          "desc": "Acrylic, opaque black, 6.00 mm; machined; Mfr: TAP Plastics"
+        },
+        {
+          "qty": 2,
+          "pn": "B0D5HPZB4Y",
+          "name": "Speaker 3W 4Ohm",
+          "desc": "XIITIA 3 W 4 Ω enclosed speaker, JST-PH2.0 lead (Annunciator SPKR1 alarm tones and SPKR2 GPWS voice)"
+        },
+        {
+          "qty": 8,
+          "pn": "90116A160",
+          "name": "Screw - M3 - 14mm",
+          "desc": "316 stainless steel pan head Phillips screw, M3 × 0.5 mm thread, 14 mm long"
+        },
+        {
+          "qty": 8,
+          "pn": "94150A325",
+          "name": "Nut - M3",
+          "desc": "Hex nut, M3 × 0.5 mm thread"
+        }
+      ],
+      "notes": [
+        "1. Item 1 is the KC-01-1061 plate. The panel screws down onto the enclosure brackets through its six Ø4.76 holes (screws on the top-level assembly).",
+        "2. Each speaker (item 2) is held under its grille by 4 screws (item 3) and nuts (item 4) through the Ø3.4 holes.",
+        "3. Both speakers plug into the Annunciator's 7in TFT Display Driver (A1): SPKR1 on the PAM8302A amplifier (alarm tones), SPKR2 on the DFPlayer (GPWS voice).",
+        "4. All sheets at 1:4 on A3. Parts list on sheet 3."
+      ]
+    },
+    "1": {
+      "pdf": "Fusion_KC-01-1061_Top_Cover_Plate_2026-11-25.pdf",
+      "line_scale": 0.35,
+      "sheets": [
+        {
+          "scale": 0.3333333333333333,
+          "views": [
+            {
+              "page": 1,
+              "src": [
+                113.4,
+                61.4,
+                403.0,
+                89.5
+              ],
+              "k": 1.0,
+              "label": "FRONT VIEW",
+              "at": [
+                112,
+                52
+              ],
+              "dims": [
+                {
+                  "h": [
+                    114.98,
+                    402.39,
+                    63.02
+                  ],
+                  "off": -7,
+                  "text": "862.00"
+                },
+                {
+                  "v": [
+                    63.02,
+                    89.18,
+                    114.98
+                  ],
+                  "off": -11,
+                  "text": "78.27"
+                }
+              ]
+            },
+            {
+              "page": 1,
+              "src": [
+                63.7,
+                61.4,
+                69.0,
+                89.5
+              ],
+              "k": 1.0,
+              "label": "SIDE VIEW",
+              "at": [
+                80.7,
+                52.0
+              ],
+              "dims": [
+                {
+                  "h": [
+                    65.27,
+                    67.3,
+                    63.02
+                  ],
+                  "off": -7,
+                  "text": "6.00"
+                }
+              ]
+            },
+            {
+              "page": 1,
+              "src": [
+                113.4,
+                158.6,
+                403.0,
+                163.9
+              ],
+              "k": 1.0,
+              "label": "TOP VIEW",
+              "at": [
+                112.0,
+                94.1
+              ]
+            },
+            {
+              "page": 1,
+              "src": [
+                21.5,
+                113,
+                227,
+                258
+              ],
+              "k": 0.75,
+              "at": [
+                40,
+                96
+              ],
+              "label": "ISOMETRIC VIEW",
+              "sublabel": "Not to scale",
+              "auto_masks": true,
+              "masks": [
+                [
+                  21.0,
+                  148.18,
+                  25.56,
+                  149.19
+                ],
+                [
+                  114.34,
+                  159.61,
+                  227.49,
+                  162.91
+                ]
+              ]
+            }
+          ],
+          "notes": true
+        },
+        {
+          "scale": 0.3333333333333333,
+          "views": [
+            {
+              "pdf": "Top_Cover_Plate_Cut_2026-11-26.pdf",
+              "page": 1,
+              "src": [
+                7.0,
+                6.5,
+                875.0,
+                92.0
+              ],
+              "k": 0.3333333333333333,
+              "line_scale": 1.0,
+              "keep_paths": "fill=\"none\"",
+              "label": "HOLE LOCATIONS (TOP FACE, FROM THE MODEL)",
+              "sublabel": "Datum: lower-left corner. X right, Y up. Dimensions in mm. Grilles G1 and G2: detail A.",
+              "dims": [
+                {
+                  "h": [
+                    10.0,
+                    872.0,
+                    10.159999999999997
+                  ],
+                  "off": -6,
+                  "text": "862.00"
+                },
+                {
+                  "v": [
+                    10.159999999999997,
+                    88.425,
+                    10.0
+                  ],
+                  "off": -8,
+                  "text": "78.27"
+                }
+              ],
+              "extra_tags": [
+                {
+                  "at": [
+                    353.0,
+                    40.925
+                  ],
+                  "r": 0.0,
+                  "text": "G1",
+                  "size": 2.2
+                },
+                {
+                  "at": [
+                    517.0,
+                    40.925
+                  ],
+                  "r": 0.0,
+                  "text": "G2",
+                  "size": 2.2
+                }
+              ],
+              "hole_view": {
+                "max_dia": 8,
+                "at": [
+                  252,
+                  110
+                ],
+                "split": 1,
+                "gap": 6,
+                "summary_at": [
+                  316,
+                  110
+                ]
+              },
+              "at": [
+                65.3,
+                52
+              ],
+              "tags": [
+                {
+                  "at": [
+                    327.0,
+                    31.292
+                  ],
+                  "r": 1.7,
+                  "text": "A1"
+                },
+                {
+                  "at": [
+                    391.0,
+                    31.292
+                  ],
+                  "r": 1.7,
+                  "text": "A2"
+                },
+                {
+                  "at": [
+                    491.0,
+                    31.292
+                  ],
+                  "r": 1.7,
+                  "text": "A3"
+                },
+                {
+                  "at": [
+                    555.0,
+                    31.292
+                  ],
+                  "r": 1.7,
+                  "text": "A4"
+                },
+                {
+                  "at": [
+                    327.0,
+                    55.292
+                  ],
+                  "r": 1.7,
+                  "text": "A5"
+                },
+                {
+                  "at": [
+                    391.0,
+                    55.292
+                  ],
+                  "r": 1.7,
+                  "text": "A6"
+                },
+                {
+                  "at": [
+                    491.0,
+                    55.292
+                  ],
+                  "r": 1.7,
+                  "text": "A7"
+                },
+                {
+                  "at": [
+                    555.0,
+                    55.292
+                  ],
+                  "r": 1.7,
+                  "text": "A8"
+                },
+                {
+                  "at": [
+                    46.0,
+                    26.66
+                  ],
+                  "r": 2.38,
+                  "text": "B1"
+                },
+                {
+                  "at": [
+                    296.0,
+                    26.66
+                  ],
+                  "r": 2.38,
+                  "text": "B2"
+                },
+                {
+                  "at": [
+                    586.0,
+                    26.66
+                  ],
+                  "r": 2.38,
+                  "text": "B3"
+                },
+                {
+                  "at": [
+                    836.0,
+                    26.66
+                  ],
+                  "r": 2.38,
+                  "text": "B4"
+                },
+                {
+                  "at": [
+                    26.5,
+                    65.161
+                  ],
+                  "r": 2.38,
+                  "text": "B5"
+                },
+                {
+                  "at": [
+                    855.5,
+                    65.161
+                  ],
+                  "r": 2.38,
+                  "text": "B6"
+                },
+                {
+                  "at": [
+                    353.0,
+                    40.925
+                  ],
+                  "r": 0.0,
+                  "text": "G1",
+                  "size": 2.2
+                },
+                {
+                  "at": [
+                    517.0,
+                    40.925
+                  ],
+                  "r": 0.0,
+                  "text": "G2",
+                  "size": 2.2
+                }
+              ],
+              "datum": {
+                "at": [
+                  10.0,
+                  88.425
+                ],
+                "len": 10
+              }
+            },
+            {
+              "pdf": "Top_Cover_Plate_Cut_2026-11-26.pdf",
+              "page": 1,
+              "src": [
+                329.5,
+                24.425,
+                388.5,
+                62.425
+              ],
+              "k": 2.0,
+              "line_scale": 1.0,
+              "keep_paths": "fill=\"none\"",
+              "at": [
+                30,
+                116
+              ],
+              "label": "DETAIL A: SPEAKER GRILLE G1 (2:1)",
+              "sublabel": "G2 is the same, 164.00 to the right.",
+              "dims": [
+                {
+                  "h": [
+                    331.5,
+                    386.5,
+                    28.792
+                  ],
+                  "off": -11,
+                  "text": "55.00"
+                },
+                {
+                  "v": [
+                    28.792,
+                    57.792,
+                    386.5
+                  ],
+                  "off": 9,
+                  "text": "29.00"
+                },
+                {
+                  "h": [
+                    358.976,
+                    361.451,
+                    28.792
+                  ],
+                  "off": -4,
+                  "text": "2.475",
+                  "size": 2.3
+                },
+                {
+                  "v": [
+                    43.292,
+                    40.817,
+                    331.5
+                  ],
+                  "off": -7,
+                  "text": "2.475",
+                  "size": 2.3
+                }
+              ],
+              "callouts": [
+                {
+                  "at": [
+                    335.747,
+                    33.039
+                  ],
+                  "to": [
+                    -6,
+                    -12
+                  ],
+                  "text": "R14.50 (2×)"
+                },
+                {
+                  "at": [
+                    375.826,
+                    45.767
+                  ],
+                  "to": [
+                    40,
+                    22
+                  ],
+                  "text": [
+                    "100 × ◇ 4.00 across corners THRU,",
+                    "square at 45°; grid 2.475 × 2.475, alternate",
+                    "positions, centred on the grille; every",
+                    "diamond inside the obround (webs ≈ 0.67)"
+                  ],
+                  "size": 2.2
+                }
+              ]
+            }
+          ],
+          "extra_tables": [
+            {
+              "at": [
+                252,
+                184
+              ],
+              "title": "GRILLES",
+              "cols": [
+                [
+                  "TAG",
+                  10,
+                  "middle"
+                ],
+                [
+                  "X",
+                  16,
+                  "end"
+                ],
+                [
+                  "Y",
+                  16,
+                  "end"
+                ],
+                [
+                  "FEATURE",
+                  62,
+                  "start"
+                ]
+              ],
+              "rows": [
+                [
+                  "G1",
+                  "349.00",
+                  "45.13",
+                  "55.00 × 29.00 obround grille, detail A"
+                ],
+                [
+                  "G2",
+                  "513.00",
+                  "45.13",
+                  "55.00 × 29.00 obround grille, detail A"
+                ]
+              ],
+              "size": 2.2
+            }
+          ],
+          "tables": [
+            {
+              "at": [
+                252,
+                110
+              ],
+              "title": "HOLE TABLE",
+              "cols": [
+                [
+                  "TAG",
+                  10,
+                  "middle"
+                ],
+                [
+                  "X",
+                  16,
+                  "end"
+                ],
+                [
+                  "Y",
+                  16,
+                  "end"
+                ],
+                [
+                  "SIZE",
+                  14,
+                  "middle"
+                ]
+              ],
+              "rows": [
+                [
+                  "A1",
+                  "317",
+                  "57.13",
+                  "Ø3.4"
+                ],
+                [
+                  "A2",
+                  "381",
+                  "57.13",
+                  "Ø3.4"
+                ],
+                [
+                  "A3",
+                  "481",
+                  "57.13",
+                  "Ø3.4"
+                ],
+                [
+                  "A4",
+                  "545",
+                  "57.13",
+                  "Ø3.4"
+                ],
+                [
+                  "A5",
+                  "317",
+                  "33.13",
+                  "Ø3.4"
+                ],
+                [
+                  "A6",
+                  "381",
+                  "33.13",
+                  "Ø3.4"
+                ],
+                [
+                  "A7",
+                  "481",
+                  "33.13",
+                  "Ø3.4"
+                ],
+                [
+                  "A8",
+                  "545",
+                  "33.13",
+                  "Ø3.4"
+                ],
+                [
+                  "B1",
+                  "36",
+                  "61.77",
+                  "Ø4.76"
+                ],
+                [
+                  "B2",
+                  "286",
+                  "61.77",
+                  "Ø4.76"
+                ],
+                [
+                  "B3",
+                  "576",
+                  "61.77",
+                  "Ø4.76"
+                ],
+                [
+                  "B4",
+                  "826",
+                  "61.77",
+                  "Ø4.76"
+                ],
+                [
+                  "B5",
+                  "16.5",
+                  "23.26",
+                  "Ø4.76"
+                ],
+                [
+                  "B6",
+                  "845.5",
+                  "23.26",
+                  "Ø4.76"
+                ]
+              ],
+              "size": 2.2
+            },
+            {
+              "at": [
+                316,
+                110
+              ],
+              "title": "HOLE SIZES",
+              "cols": [
+                [
+                  "TAG",
+                  10,
+                  "middle"
+                ],
+                [
+                  "SIZE",
+                  30,
+                  "start"
+                ],
+                [
+                  "QTY",
+                  12,
+                  "middle"
+                ]
+              ],
+              "rows": [
+                [
+                  "A",
+                  "Ø3.4 THRU",
+                  "8"
+                ],
+                [
+                  "B",
+                  "Ø4.76 THRU",
+                  "6"
+                ]
+              ],
+              "size": 2.2
+            },
+            {
+              "at": [
+                252,
+                184
+              ],
+              "title": "GRILLES",
+              "cols": [
+                [
+                  "TAG",
+                  10,
+                  "middle"
+                ],
+                [
+                  "X",
+                  16,
+                  "end"
+                ],
+                [
+                  "Y",
+                  16,
+                  "end"
+                ],
+                [
+                  "FEATURE",
+                  62,
+                  "start"
+                ]
+              ],
+              "rows": [
+                [
+                  "G1",
+                  "349.00",
+                  "45.13",
+                  "55.00 × 29.00 obround grille, detail A"
+                ],
+                [
+                  "G2",
+                  "513.00",
+                  "45.13",
+                  "55.00 × 29.00 obround grille, detail A"
+                ]
+              ],
+              "size": 2.2
+            }
+          ]
+        }
+      ],
+      "parts": [],
+      "notes": [
+        "1. Material: acrylic, opaque black, 6.00 mm. Supplier: TAP Plastics.",
+        "2. Outline 862.00 × 78.27 × 6.00 mm. All edges machined.",
+        "3. Holes as the hole table (sheet 2): A Ø3.4 for the speaker screws, B Ø4.76 for the enclosure brackets. Speaker grilles G1 and G2 as detail A, cut through in one piece with the plate.",
+        "4. Sheet 1 at 1:3 (isometric view not to scale); sheet 2 at 1:3, detail A at 2:1, on A3."
+      ]
+    }
+  }
+}

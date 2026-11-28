@@ -1,6 +1,6 @@
 /**
  * @file        TesterUI.cpp
- * @version     2.0.0
+ * @version     2.1.0
  * @project     Kerbal Controller Mk1 — Module Tester
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -499,17 +499,30 @@ int uiScanTouch(uint8_t count) {
 // ============================================================
 //  Dashboard screen
 // ============================================================
-void uiDashboardBegin(const ModuleInfo* info, uint8_t addr,
-                      uint8_t fwMajor, uint8_t fwMinor, uint8_t caps) {
+static void _fmtVer(char* buf, uint8_t n, uint8_t major, uint8_t minor, uint8_t patch) {
+    if (patch == KMC_FW_PATCH_UNKNOWN) snprintf(buf, n, "%u.%u", major, minor);
+    else                               snprintf(buf, n, "%u.%u.%u", major, minor, patch);
+}
+
+void uiDashboardBegin(const ModuleInfo* info, uint8_t addr, const ModuleIdentity* id) {
     tft.fillScreen(C_BG);
 
-    // Title bar: module name + address + firmware version + capability
-    // flags from the identity reply (e.g. "GPWS Input 0x2A fw2.0 c:10").
+    // Title bar: module name + address + the identity's sketch / library
+    // versions + capability flags (e.g. "GPWS Input 0x2A v2.2.0/2.1.0 c:10").
     char t[41];
-    if (fwMajor || fwMinor || caps) {
-        snprintf(t, sizeof(t), "%s 0x%02X fw%u.%u c:%02X",
-                 (info && info->name) ? info->name : "Module", addr,
-                 fwMajor, fwMinor, caps);
+    if (id && id->valid) {
+        char lib[12], sk[12], v[26];
+        _fmtVer(lib, sizeof(lib), id->fwMajor, id->fwMinor, id->fwPatch);
+        if (id->skMajor == KMC_SKETCH_VERSION_UNKNOWN) {
+            snprintf(v, sizeof(v), "-/%s", lib);
+        } else if (id->skMajor == id->fwMajor && id->skMinor == id->fwMinor && id->skPatch == id->fwPatch) {
+            snprintf(v, sizeof(v), "%s", lib);
+        } else {
+            _fmtVer(sk, sizeof(sk), id->skMajor, id->skMinor, id->skPatch);
+            snprintf(v, sizeof(v), "%s/%s", sk, lib);
+        }
+        snprintf(t, sizeof(t), "%s 0x%02X v%s c:%02X",
+                 (info && info->name) ? info->name : "Module", addr, v, id->caps);
     } else {
         snprintf(t, sizeof(t), "%s 0x%02X",
                  (info && info->name) ? info->name : "Module", addr);

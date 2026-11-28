@@ -143,9 +143,9 @@ def power():
     Y0, Y1 = 50, 124
     block(10, Y0, 104, Y1, "12 V DC SUPPLY", ["external", "10 A rated", "(120 W)"], dash="5 3", fill="#fafafa",
           tsize=10.5)
-    block(120, Y0, 226, Y1, "12 V DC IN", ["rear panel · DC1", "2.5 mm barrel", "jack"], fill="#fbe9e7",
+    block(120, Y0, 226, Y1, "12 V DC IN", ["5.5 × 2.1 mm jack", "on the rear panel,", "to terminal DC1"], fill="#fbe9e7",
           stroke="#8d6e63")
-    block(242, Y0, 420, Y1, "SOFT-LATCH SWITCH", ["Control Module", "IRF9540N P-MOSFET load switch",
+    block(242, Y0, 420, Y1, "SOFT-LATCH SWITCH", ["Control Module", "IRF4905S P-MOSFET load switch",
                                                   "analog RC hold-to-off timing",
                                                   "no Teensy pin (master cannot see it)"])
     block(436, Y0, 640, Y1, "INA228 POWER MONITOR", ["Control Module · I2C 0x40",
@@ -156,7 +156,7 @@ def power():
 
     # Power button into the latch
     block(256, 144, 406, 194, "POWER BUTTON (A1)", ["momentary, to Ctrl Module H1",
-                                                    "short press ON · hold 3 s OFF"])
+                                                    "short press ON · hold 3–4 s OFF"])
     kline([(331, 144), (331, Y1 + 1)], "pwr", head=True)
 
     # Supply limits, under the INA228

@@ -117,8 +117,8 @@ def side_a():
     # Panel A1, in panel order: power button, Annunciator, Information Display 1
     item(24, 84, 170, 144, ["POWER button", "momentary", "(on / hold 3 s off)"], size=11)
     board(196, 72, 436, 172, "ANNUNCIATOR", ["0x10 · 7\" TFT Display Driver", "KC-01-1910 (Teensy 4.1)"], ty=22)
-    for x, n, rows in ((242, "SPKR1", ["SPEAKER 1", "alarm tones", "8 Ω"]),
-                       (322, "SPKR2", ["SPEAKER 2", "GPWS voice", "8 Ω"])):
+    for x, n, rows in ((242, "SPKR1", ["SPEAKER 1", "alarm tones", "4 Ω"]),
+                       (322, "SPKR2", ["SPEAKER 2", "GPWS voice", "4 Ω"])):
         wire([(x, 180), (x, 238)], "spk")
         tab(x, 172, n, "bottom")
         ctag(x, 208, ["2-pin", TBD], "spk")
@@ -167,7 +167,7 @@ def side_a():
     # Rear panel, left
     rect(10, 362, 146, 572, fill="#fbe9e7", stroke="#8d6e63", sw=1.4, r=8)
     t(78, 380, "REAR PANEL", size=12.5, weight="bold", fill="#5d4037")
-    for y, kind, name, tg, rows in ((408, "pwr", "DC1", ["2-pin 12 V", TBD], ["12 V DC IN", ("2.5 mm barrel jack", {"fill": "#6d4c41"})]),
+    for y, kind, name, tg, rows in ((408, "pwr", "DC1", ["2-pin 12 V", TBD], ["12 V DC IN", ("5.5 × 2.1 mm barrel jack", {"fill": "#6d4c41"})]),
                                     (456, "usb", "USBC1", ["24-pin USB-C", TBD], ["USB-C · HOST", ("panel mount", {"fill": "#6d4c41"})]),
                                     (504, "exp", "USBC2", ["24-pin USB-C", TBD], ["USB-C · EXP", ("reserved", {"fill": "#6d4c41"})]),
                                     (552, "fan", "CN1", ["4-pin fan", TBD], ["FAN 1", ("PWM + tach", {"fill": "#6d4c41"})])):

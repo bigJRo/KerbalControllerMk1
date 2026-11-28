@@ -22,7 +22,7 @@
 
 enum CarrierId : uint8_t { CAR_ANNUNCIATOR = 0, CAR_INFODISP_1, CAR_INFODISP_2, CAR_RESDISP, CAR_COUNT };
 
-// Annunciator MF_* bit positions (KCMk1_Annunciator.h). Bit 3 is A/P ARM (was THRTL ENA).
+// Annunciator MF_* bit positions (KCMk1_Annunciator.h). Bit 3 is A/P ENAB (was THRTL ENA).
 enum : uint8_t {
   MF_DEMO = 0, MF_WARP, MF_AUDIO, MF_AP_ARM, MF_TRIM, MF_AUTOPILOT, MF_DEBUG, MF_SWITCH_ERR,
   MF_SIMPIT_LOST, MF_THRTL_PREC, MF_INPUT_PREC, MF_ENG_ARM

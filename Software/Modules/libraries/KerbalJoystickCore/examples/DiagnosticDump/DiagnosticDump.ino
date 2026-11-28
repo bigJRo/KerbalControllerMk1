@@ -1,7 +1,7 @@
 /**
  * @file        DiagnosticDump.ino
- * @version     2.0.0
- * @date        2026-04-08
+ * @version     2.1.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -24,6 +24,7 @@
  *              https://www.gnu.org/licenses/gpl-3.0.html
  *
  * @note        Hardware: KC-01-1831/1832 v1.0 (ATtiny816)
+ *              Library:  KerbalJoystickCore v2.4.0 or later
  *              IDE settings:
  *                Board:             ATtiny816 (megaTinyCore)
  *                Clock:             10 MHz or higher
@@ -37,6 +38,13 @@
 #define MODULE_TYPE_ID      0x09
 #define SERIAL_BAUD         115200
 #define DUMP_INTERVAL_MS    1000
+
+/** @brief This sketch's own version, MAJOR.MINOR.PATCH, reported at identity
+ *         bytes 5..7 next to the KerbalJoystickCore version (I2C spec §6). Keep
+ *         @version in step with it. */
+#define SKETCH_VERSION_MAJOR  2
+#define SKETCH_VERSION_MINOR  1
+#define SKETCH_VERSION_PATCH  0
 
 const RGBColor activeColors[KJC_NEO_COUNT] = {
     KJC_GREEN,
@@ -93,13 +101,24 @@ void setup() {
 
     Serial.println(F("\nKerbalJoystickCore Diagnostic"));
     Serial.println(F("================================"));
-    Serial.print(F("Firmware: "));
+    Serial.print(F("Library: "));
     Serial.print(KJC_FIRMWARE_MAJOR);
     Serial.print(F("."));
-    Serial.println(KJC_FIRMWARE_MINOR);
+    Serial.print(KJC_FIRMWARE_MINOR);
+    Serial.print(F("."));
+    Serial.println(KJC_FIRMWARE_PATCH);
+    Serial.print(F("Sketch:  "));
+    Serial.print(SKETCH_VERSION_MAJOR);
+    Serial.print(F("."));
+    Serial.print(SKETCH_VERSION_MINOR);
+    Serial.print(F("."));
+    Serial.println(SKETCH_VERSION_PATCH);
     Serial.print(F("I2C Address: 0x"));
     Serial.println(I2C_ADDRESS, HEX);
     Serial.println(F("Calibrating — keep joystick at rest..."));
+
+    // Report this sketch's version in the identity, next to the library's.
+    kjcSetSketchVersion(SKETCH_VERSION_MAJOR, SKETCH_VERSION_MINOR, SKETCH_VERSION_PATCH);
 
     Wire.begin(I2C_ADDRESS);
     kjcBegin(MODULE_TYPE_ID, KJC_CAP_JOYSTICK, activeColors);
