@@ -1,8 +1,8 @@
 # KC-01-1700 Control Module: drawing sources
 
 Source files for the Control Module drawings (assembly KC-01-1700, schematic KC-01-1701,
-PCB KC-01-1702), board V2.1. Rev D supersedes Rev C (pre-order review changes, same board
-version: no V2.1 board had been fabricated); earlier revisions and their sources are in git history. The released PDFs are in `Documents/Drawings`.
+PCB KC-01-1702), board V2.1. Rev D (released 2026-11-28, owner) supersedes Rev C (pre-order review
+changes, same board version: no V2.1 board had been fabricated); earlier revisions and their sources are in git history. The released PDFs are in `Documents/Drawings`.
 
 | File | What it is | Feeds |
 |---|---|---|
