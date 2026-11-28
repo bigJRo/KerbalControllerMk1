@@ -46,7 +46,7 @@
   "gerber_zip": "Gerber_KC-01-1702_Control_Module_PCB_2026-11-28.zip",
   "bom_csv": "BOM_KC-01-1702_Control_Module_PCB_2026-11-28.csv",
   "pnp_csv": "PickAndPlace_KC-01-1702_Control_Module_PCB_2026-11-28.csv",
-  "assy_pdf": "Fusion_KC-01-1700_Control_Module_2026-11-25.pdf",
+  "assy_pdf": "Fusion_KC-01-1700_Control_Module_2026-11-28.pdf",
   "doc_title": {
     "0": "Control Module Complete"
   },
@@ -421,61 +421,61 @@
         {
           "page": 1,
           "src": [
-            89.4,
-            52.3,
-            103.4,
-            109.2
+            61.2,
+            61.9,
+            228.9,
+            110.0
           ],
           "at": [
-            18.0,
+            16.0,
             45.6
           ],
-          "k": 1.66667,
-          "label": "LEFT VIEW"
-        },
-        {
-          "page": 1,
-          "src": [
-            182.9,
-            52.3,
-            383.3,
-            109.2
-          ],
-          "at": [
-            51.33,
-            45.6
-          ],
-          "k": 1.66667,
+          "k": 2.0,
           "label": "TOP VIEW"
         },
         {
           "page": 1,
           "src": [
-            182.9,
-            163.3,
-            383.3,
-            177.3
+            304.0,
+            61.9,
+            316.0,
+            110.0
           ],
           "at": [
-            51.33,
-            147.43
+            363.4,
+            45.6
           ],
-          "k": 1.66667,
+          "k": 2.0,
+          "label": "RIGHT VIEW"
+        },
+        {
+          "page": 1,
+          "src": [
+            61.2,
+            202.7,
+            228.9,
+            214.7
+          ],
+          "at": [
+            16.0,
+            152.0
+          ],
+          "k": 2.0,
           "label": "FRONT VIEW"
         },
         {
           "page": 1,
           "src": [
-            39.6,
-            147.6,
-            183.5,
-            273.0
+            266.0,
+            125.4,
+            389.0,
+            231.0
           ],
           "at": [
-            300.0,
-            164.0
+            357.0,
+            152.0
           ],
-          "k": 0.4306,
+          "k": 0.4,
           "label": "ISOMETRIC VIEW",
           "sublabel": "Not to scale"
         }
@@ -486,18 +486,42 @@
       "parts_list": true,
       "views": [
         {
-          "page": 2,
+          "page": 1,
           "src": [
-            95.0,
-            68.0,
-            314.0,
-            208.0
+            266.0,
+            125.4,
+            389.0,
+            231.0
           ],
           "at": [
-            90.0,
-            78.0
+            118.0,
+            84.0
           ],
-          "k": 1.05
+          "k": 1.35,
+          "balloons": [
+            {
+              "at": [
+                308.5,
+                183.8
+              ],
+              "c": [
+                290.0,
+                163.0
+              ],
+              "text": "1"
+            },
+            {
+              "at": [
+                370.2,
+                143.0
+              ],
+              "c": [
+                356.0,
+                128.6
+              ],
+              "text": "2"
+            }
+          ]
         }
       ]
     }
@@ -518,7 +542,7 @@
   ],
   "assy_notes": [
     "1. Item 1 is the KC-01-1702 card as assembled by JLCPCB to KC-01-1701 to KC-01-1704.",
-    "2. The Teensy 4.1 (item 2) plugs into H2 and H3.",
+    "2. The Teensy 4.1 (item 2) plugs into the H2 and H3 sockets; it is not shown in the views.",
     "3. H4 (EMC2101 remote temperature sensor) is fitted; nothing plugs into it yet and the firmware reads the internal sensor.",
     "4. Orthographic views at 1:1 on A3; isometric views not to scale. Parts list on sheet 2."
   ],
