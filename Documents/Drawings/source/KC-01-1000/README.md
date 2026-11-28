@@ -3,13 +3,14 @@
 Source files for the top-level assembly drawing of the Kerbal Controller Mk1, KC-01-1000. Fusion
 cannot export the whole assembly drawing at once, so it comes in parts; the KC drawing combines
 them: parts 1 to 11 of the export, which fit every parts-list item. Rev A was released on
-2026-11-27 (owner); the released PDF is in `Documents/Drawings`.
+2026-11-27 (owner); the released PDF is in `Documents/Drawings`. Rev B (draft, 2026-11-28) takes the
+Control Module Rev D into steps 5 and 6.
 
 | File | What it is | Feeds |
 |---|---|---|
 | `KC-01-1000.json` | Package config: title, revision, status, view crops, placement and masks, parts list, step tables and notes | the drawing |
 | `Fusion_KC-01-1000_Final_Assembly_Pt1_2026-11-26.pdf` | Fusion export part 1 (3 sheets): overall views (sheets 1 and 2) and the full parts list (sheet 3) | sheets 1 to 3 |
-| `Fusion_KC-01-1000_Final_Assembly_Pt2_2026-11-26.pdf` to `_Pt11_` | Fusion export parts 2 to 11 (1 sheet each): one assembly step each, with its own parts list | sheets 4 to 13 |
+| `Fusion_KC-01-1000_Final_Assembly_Pt2_2026-11-26.pdf` to `_Pt11_` | Fusion export parts 2 to 11 (1 sheet each): one assembly step each, with its own parts list. Parts 6 and 7 are the 2026-11-28 re-exports (Control Module Rev D, DC1 screw terminal); the views sit where the 2026-11-26 ones did | sheets 4 to 13 |
 
 ## Layout of the combined drawing
 
@@ -24,6 +25,19 @@ them: parts 1 to 11 of the export, which fit every parts-list item. Rev A was re
   centring marks are masked; each view is scaled (0.84 to 1.0) to fit. Steps 1 to 10: brackets;
   feet and internal brace; rear panel; standoffs; Control Module and Extension; panel brace and
   Panel A1; Panel A2; panel brace and Panel B1; Panel B2; top panel.
+
+## Rev B (2026-11-28)
+
+- **Steps 5 and 6 (sheets 8 and 9):** parts 6 and 7 re-exported by the owner with the Control
+  Module Rev D model, whose 12 V input is the DC1 screw terminal. Same view positions and crops.
+  Fusion's own parts table on part 6 moved; it is outside the crop.
+- **Item 13 (pre-order review 3.2.1):** Adafruit 4218, USB-C round panel mount extension (socket on
+  the panel, plug inside), replaces the 4259 adapter; parts list and step 3 table. The Fusion
+  model and its Ø22.7 holes are unchanged.
+- **Item 20 (3.2.8):** the Control Module Extension is fitted as an assembled card (KC-01-1711 to
+  KC-01-1714), not a bare PWB.
+- **Step 5 note (3.2.3):** the 5607's leads (item 12) go to DC1 in 0.5 mm² ferrules, red +12 V to
+  pin 1, black GND to pin 2.
 
 ## Review notes (2026-11-27, parts 1 to 11)
 

@@ -3,11 +3,11 @@
   "name": "Final Assembly",
   "title": "Final Assembly",
   "subtitle": "Kerbal Controller Mk1 · Top-level assembly",
-  "rev": "A",
+  "rev": "B",
   "board_version": "Mk1",
   "version_label": "Unit",
-  "date": "2026-11-27",
-  "status": "RELEASED",
+  "date": "2026-11-28",
+  "status": "DRAFT",
   "created_by": "J. Rostoker",
   "approved_by": "J. Kerman",
   "package_docs": "0",
@@ -24,13 +24,19 @@
     "0": "Final Assembly"
   },
   "doc_status": {
-    "0": "RELEASED"
+    "0": "DRAFT"
   },
   "revisions": [
     [
       "A",
       "Initial release: KC frame, combined from the Fusion exports (parts 1 to 11)",
       "2026-11-27",
+      "J. Kerman"
+    ],
+    [
+      "B",
+      "Control Module Rev D in steps 5 and 6; Adafruit 4218 USB-C; item 20 assembled",
+      "2026-11-28",
       "J. Kerman"
     ]
   ],
@@ -113,9 +119,9 @@
         },
         {
           "qty": 2,
-          "pn": "4259",
-          "name": "Panel Mount - USB-C Connector",
-          "desc": "USB-C jack to USB-A jack round panel mount adapter; Adafruit"
+          "pn": "4218",
+          "name": "Panel Mount - USB-C Extension",
+          "desc": "USB Type-C round panel mount extension cable, socket to plug; Adafruit"
         },
         {
           "qty": 2,
@@ -157,7 +163,7 @@
           "qty": 1,
           "pn": "KC-01-1712",
           "name": "Control Module Extension",
-          "desc": "Printed wiring board; Mfr: JLCPCB"
+          "desc": "Assembled CCA (JLCPCB), to its drawings KC-01-1711 to KC-01-1714"
         },
         {
           "qty": 2,
@@ -783,8 +789,8 @@
                 [
                   "13",
                   "2",
-                  "4259",
-                  "Panel Mount - USB-C Connector"
+                  "4218",
+                  "Panel Mount - USB-C Extension"
                 ],
                 [
                   "14",
@@ -914,7 +920,7 @@
           "scale": null,
           "views": [
             {
-              "pdf": "Fusion_KC-01-1000_Final_Assembly_Pt6_2026-11-26.pdf",
+              "pdf": "Fusion_KC-01-1000_Final_Assembly_Pt6_2026-11-28.pdf",
               "page": 1,
               "src": [
                 69,
@@ -939,6 +945,16 @@
               "text": "STEP 5 · CONTROL MODULE AND EXTENSION",
               "size": 3.6,
               "anchor": "start"
+            },
+            {
+              "at": [
+                16,
+                27
+              ],
+              "text": "Note: land the leads of item 12 in Control Module terminal DC1 with 0.5 mm² ferrules: red (+12 V) to pin 1, black (GND) to pin 2. Check the polarity before power-up.",
+              "size": 2.6,
+              "anchor": "start",
+              "weight": "normal"
             }
           ],
           "tables": [
@@ -998,7 +1014,7 @@
           "scale": null,
           "views": [
             {
-              "pdf": "Fusion_KC-01-1000_Final_Assembly_Pt7_2026-11-26.pdf",
+              "pdf": "Fusion_KC-01-1000_Final_Assembly_Pt7_2026-11-28.pdf",
               "page": 1,
               "src": [
                 76,
