@@ -3,18 +3,18 @@
   "name": "Wide Button Module",
   "title": "Wide Button Module",
   "subtitle": "Kerbal Controller Mk1 · Main enclosure",
-  "rev": "B",
+  "rev": "C",
   "board_version": "V2.1",
-  "date": "2026-11-24",
+  "date": "2026-11-28",
   "status": "DRAFT",
   "created_by": "J. Rostoker",
   "approved_by": "J. Kerman",
   "doc_status": {
-    "0": "RELEASED",
-    "1": "RELEASED",
-    "2": "RELEASED",
-    "3": "RELEASED",
-    "4": "RELEASED"
+    "0": "DRAFT",
+    "1": "DRAFT",
+    "2": "DRAFT",
+    "3": "DRAFT",
+    "4": "DRAFT"
   },
   "revisions": [
     [
@@ -28,12 +28,18 @@
       "Board V2.1: PCA9306 VREF2/EN pull-up, U19 pin 7 freed",
       "2026-11-24",
       "J. Kerman"
+    ],
+    [
+      "C",
+      "EN pull-up, 10 µF in / 22 µF out, I²C pull-ups 47 kΩ",
+      "2026-11-28",
+      "J. Kerman"
     ]
   ],
-  "sch_pdf": "SCH_KC-01-1811_Wide_Button_Module_2026-11-24.pdf",
-  "gerber_zip": "Gerber_KC-01-1812_Wide_Button_Module_PCB_2026-11-24.zip",
-  "bom_csv": "BOM_KC-01-1812_Wide_Button_Module_PCB_2026-11-24.csv",
-  "pnp_csv": "PickAndPlace_KC-01-1812_Wide_Button_Module_PCB_2026-11-24.csv",
+  "sch_pdf": "SCH_KC-01-1811_Wide_Button_Module_2026-11-28.pdf",
+  "gerber_zip": "Gerber_KC-01-1812_Wide_Button_Module_PCB_2026-11-28.zip",
+  "bom_csv": "BOM_KC-01-1812_Wide_Button_Module_PCB_2026-11-28.csv",
+  "pnp_csv": "PickAndPlace_KC-01-1812_Wide_Button_Module_PCB_2026-11-28.csv",
   "assy_pdf": "Fusion_KC-01-1810_Wide_Button_Module_2026-11-24.pdf",
   "doc_title": {
     "0": "Wide Button Module Complete"
@@ -105,7 +111,7 @@
                 546,
                 409
               ],
-              "label": "Power: 12 V input to 5 V (U2)"
+              "label": "Power: 12 V input to 5 V (U1$CBB15)"
             }
           ],
           [
@@ -117,7 +123,7 @@
                 830,
                 292
               ],
-              "label": "I²C level converter block (sheet 3)"
+              "label": "I²C level converter and 5 V converter blocks (sheet 3)"
             }
           ]
         ]
@@ -174,26 +180,26 @@
         [
           [
             {
-              "page": 3,
+              "page": 4,
               "crop": [
                 83,
                 80,
                 512,
                 238
               ],
-              "label": "5 V converter (U2)"
+              "label": "5 V converter block (U1$CBB15 MPM3610, EN pull-up R3$CBB15)"
             }
           ],
           [
             {
-              "page": 4,
+              "page": 3,
               "crop": [
                 83,
                 73,
                 497,
                 224
               ],
-              "label": "I²C level converter (U1$CBB15 PCA9306, R3$CBB15 200 kΩ on VREF2/EN)"
+              "label": "I²C level converter block (U1$CBB14 PCA9306, R3$CBB14 200 kΩ on VREF2/EN, pull-ups R1$CBB14 / R2$CBB14)"
             }
           ]
         ]
@@ -341,7 +347,7 @@
     "1. INSTALLED BY: JLCPCB = fitted by the JLCPCB assemblers (SMT and through-hole) before delivery; After delivery = fitted by the builder.",
     "2. PROCESS gives the assembly process and the side the part is on.",
     "3. The PB26 switches SW1–SW12 are self-sourced (no LCSC number) and soldered after delivery; see KC-01-1810 item 2.",
-    "4. Designators ending $CBB15 belong to the I²C level converter block (schematic sheet 3); R3$CBB15 is a different part from R3.",
+    "4. Designators ending $CBB14 belong to the I²C level converter block and $CBB15 to the 5 V converter block (schematic sheet 3); R3$CBB14 and R3$CBB15 are different parts.",
     "5. U16 and U17 are the panel input terminal blocks.",
     "6. Substitutes need the approval of the design authority."
   ],
@@ -376,7 +382,7 @@
     "1. The switches SW1–SW12 are on the top side; every other part is on the bottom side. Each side is shown in two overlapping parts, top half and bottom half.",
     "2. The bottom view is drawn as seen holding the board bottom side up (flipped left to right), so the datum is at the top right.",
     "3. Red dot = pin 1 of every part with more than two pins and the cathode (pin 1) of D1. These match the silkscreen marks.",
-    "4. U16 and U17 are the panel input terminals (B16–B23). The level converter parts carry EasyEDA block designators (U1$CBB15, R1$CBB15 to R3$CBB15, C1$CBB15, C2$CBB15).",
+    "4. U16 and U17 are the panel input terminals (B16–B23). The I²C level converter and 5 V converter parts carry EasyEDA block designators: $CBB14 (U1, R1–R3, C1, C2) and $CBB15 (U1, R1–R3, C1, C2).",
     "5. Part centres, rotations and part numbers are in the placement table (last sheets), measured from the datum (top view)."
   ],
   "mount_callout": {
@@ -452,7 +458,8 @@
             42.0
           ],
           "k": 1.0,
-          "label": "LEFT VIEW"
+          "label": "LEFT VIEW",
+          "line_scale": 0.35
         },
         {
           "page": 1,
@@ -467,7 +474,8 @@
             42.0
           ],
           "k": 1.0,
-          "label": "TOP VIEW"
+          "label": "TOP VIEW",
+          "line_scale": 0.35
         },
         {
           "page": 1,
@@ -482,7 +490,8 @@
             166.0
           ],
           "k": 1.0,
-          "label": "FRONT VIEW"
+          "label": "FRONT VIEW",
+          "line_scale": 0.35
         },
         {
           "page": 1,
@@ -498,7 +507,8 @@
           ],
           "k": 1.2,
           "label": "ISOMETRIC VIEW",
-          "sublabel": "Not to scale"
+          "sublabel": "Not to scale",
+          "line_scale": 0.35
         }
       ]
     },
@@ -544,7 +554,8 @@
               105,
               273
             ]
-          ]
+          ],
+          "line_scale": 0.35
         }
       ]
     }
