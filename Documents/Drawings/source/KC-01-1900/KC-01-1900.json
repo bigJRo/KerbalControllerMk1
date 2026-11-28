@@ -6,15 +6,15 @@
   "rev": "C",
   "board_version": "V2.0",
   "date": "2026-11-28",
-  "status": "DRAFT",
+  "status": "RELEASED",
   "created_by": "J. Rostoker",
   "approved_by": "J. Kerman",
   "doc_status": {
-    "0": "DRAFT",
-    "1": "DRAFT",
-    "2": "DRAFT",
-    "3": "DRAFT",
-    "4": "DRAFT"
+    "0": "RELEASED",
+    "1": "RELEASED",
+    "2": "RELEASED",
+    "3": "RELEASED",
+    "4": "RELEASED"
   },
   "revisions": [
     [

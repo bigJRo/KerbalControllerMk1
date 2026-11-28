@@ -1,6 +1,6 @@
 # KC-01-1910 7in TFT Display Driver: drawing sources
 
-Source files for the Rev C drawings (draft, 2026-11-28; Rev B released 2026-11-25) of the 7in TFT Display Driver, board V2.1 (assembly KC-01-1910,
+Source files for the Rev C drawings (released 2026-11-28, owner; supersedes Rev B) of the 7in TFT Display Driver, board V2.1 (assembly KC-01-1910,
 schematic KC-01-1911, PCB KC-01-1912, BOM KC-01-1913, placement KC-01-1914). The released
 PDFs are in `Documents/Drawings`.
 

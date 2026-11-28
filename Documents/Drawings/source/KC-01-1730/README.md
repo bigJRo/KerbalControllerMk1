@@ -1,6 +1,6 @@
 # KC-01-1730 Panel Hub: drawing sources
 
-Source files for the Rev B board drawings of the Panel Hub (board V2.1; Rev B draft 2026-11-28, Rev A released 2026-11-24)
+Source files for the Rev B board drawings of the Panel Hub (board V2.1; Rev B released 2026-11-28, owner; supersedes Rev A)
 (schematic KC-01-1731, PCB KC-01-1732, BOM KC-01-1733, placement KC-01-1734). There is no
 KC-01-1730 assembly drawing. The released PDFs are in `Documents/Drawings`.
 

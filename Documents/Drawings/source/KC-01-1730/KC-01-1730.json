@@ -6,7 +6,7 @@
   "rev": "B",
   "board_version": "V2.1",
   "date": "2026-11-28",
-  "status": "DRAFT",
+  "status": "RELEASED",
   "created_by": "J. Rostoker",
   "approved_by": "J. Kerman",
   "package_docs": "1234",
@@ -257,9 +257,9 @@
     "dy": 12
   },
   "doc_status": {
-    "1": "DRAFT",
-    "2": "DRAFT",
-    "3": "DRAFT",
-    "4": "DRAFT"
+    "1": "RELEASED",
+    "2": "RELEASED",
+    "3": "RELEASED",
+    "4": "RELEASED"
   }
 }

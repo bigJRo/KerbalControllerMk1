@@ -1,6 +1,6 @@
 # KC-01-1900 2in TFT Display Driver: drawing sources
 
-Source files for the Rev C drawings (draft, 2026-11-28; Rev B released 2026-11-24) of the 2in TFT Display Driver (assembly KC-01-1900,
+Source files for the Rev C drawings (released 2026-11-28, owner; supersedes Rev B) of the 2in TFT Display Driver (assembly KC-01-1900,
 schematic KC-01-1901, PCB KC-01-1902, BOM KC-01-1903, placement KC-01-1904). The released
 PDFs are in `Documents/Drawings`.
 
