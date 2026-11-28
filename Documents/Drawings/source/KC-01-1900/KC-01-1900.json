@@ -3,18 +3,18 @@
   "name": "2in TFT Display Driver",
   "title": "2in TFT Display Driver",
   "subtitle": "Kerbal Controller Mk1 · Main enclosure",
-  "rev": "B",
+  "rev": "C",
   "board_version": "V2.0",
-  "date": "2026-11-24",
+  "date": "2026-11-28",
   "status": "DRAFT",
   "created_by": "J. Rostoker",
   "approved_by": "J. Kerman",
   "doc_status": {
-    "0": "RELEASED",
-    "1": "RELEASED",
-    "2": "RELEASED",
-    "3": "RELEASED",
-    "4": "RELEASED"
+    "0": "DRAFT",
+    "1": "DRAFT",
+    "2": "DRAFT",
+    "3": "DRAFT",
+    "4": "DRAFT"
   },
   "revisions": [
     [
@@ -28,12 +28,18 @@
       "Redrawn in the KC drawing frame; parts list numbers corrected",
       "2026-11-24",
       "J. Kerman"
+    ],
+    [
+      "C",
+      "MPM3610 EN pull-up R3; 10 µF in, 22 µF out",
+      "2026-11-28",
+      "J. Kerman"
     ]
   ],
-  "sch_pdf": "SCH_KC-01-1901_2in_TFT_Display_Driver_2026-11-23.pdf",
-  "gerber_zip": "Gerber_KC-01-1902_2in_TFT_Display_Driver_PCB_2026-11-23.zip",
-  "bom_csv": "BOM_KC-01-1902_2in_TFT_Display_Driver_PCB_2026-11-23.csv",
-  "pnp_csv": "PickAndPlace_KC-01-1902_2in_TFT_Display_Driver_PCB_2026-11-23.csv",
+  "sch_pdf": "SCH_KC-01-1901_2in_TFT_Display_Driver_2026-11-28.pdf",
+  "gerber_zip": "Gerber_KC-01-1902_2in_TFT_Display_Driver_PCB_2026-11-28.zip",
+  "bom_csv": "BOM_KC-01-1902_2in_TFT_Display_Driver_PCB_2026-11-28.csv",
+  "pnp_csv": "PickAndPlace_KC-01-1902_2in_TFT_Display_Driver_PCB_2026-11-28.csv",
   "assy_pdf": "Fusion_KC-01-1900_2in_TFT_Display_Driver_2026-11-23.pdf",
   "doc_title": {
     "0": "2in TFT Display Driver Complete"
@@ -67,7 +73,7 @@
                 724,
                 177
               ],
-              "label": "Display connector (H3), TFT_CS pull-up (R3)"
+              "label": "Display connector (H3), TFT_CS pull-up (R5)"
             }
           ]
         ],
@@ -130,7 +136,7 @@
         [
           [
             {
-              "page": 3,
+              "page": 4,
               "crop": [
                 84,
                 81,
@@ -144,7 +150,7 @@
         [
           [
             {
-              "page": 4,
+              "page": 3,
               "crop": [
                 113,
                 117,
@@ -360,7 +366,8 @@
             38.0
           ],
           "k": 1.0,
-          "label": "LEFT VIEW"
+          "label": "LEFT VIEW",
+          "line_scale": 0.35
         },
         {
           "page": 1,
@@ -375,7 +382,8 @@
             38.0
           ],
           "k": 1.0,
-          "label": "FRONT VIEW"
+          "label": "FRONT VIEW",
+          "line_scale": 0.35
         },
         {
           "page": 1,
@@ -390,7 +398,8 @@
             136.0
           ],
           "k": 1.0,
-          "label": "BOTTOM VIEW"
+          "label": "BOTTOM VIEW",
+          "line_scale": 0.35
         },
         {
           "page": 1,
@@ -406,7 +415,8 @@
           ],
           "k": 0.9,
           "label": "ISOMETRIC VIEW",
-          "sublabel": "Not to scale"
+          "sublabel": "Not to scale",
+          "line_scale": 0.35
         }
       ]
     },
@@ -452,7 +462,8 @@
               26,
               255
             ]
-          ]
+          ],
+          "line_scale": 0.35
         }
       ]
     }
