@@ -17,13 +17,13 @@
 <text x="57.0" y="104.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">(120 W)</text>
 <rect x="120.0" y="50.0" width="106.0" height="74.0" rx="5" fill="#fbe9e7" stroke="#8d6e63" stroke-width="1.4"/>
 <text x="173.0" y="66.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#263238">12 V DC IN</text>
-<text x="173.0" y="79.5" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">rear panel · DC1</text>
-<text x="173.0" y="92.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">5.5 × 2.1 mm</text>
-<text x="173.0" y="104.5" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">barrel jack</text>
+<text x="173.0" y="79.5" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">5.5 × 2.1 mm jack</text>
+<text x="173.0" y="92.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">on the rear panel,</text>
+<text x="173.0" y="104.5" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">to terminal DC1</text>
 <rect x="242.0" y="50.0" width="178.0" height="74.0" rx="5" fill="#ffffff" stroke="#263238" stroke-width="1.4"/>
 <text x="331.0" y="66.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#263238">SOFT-LATCH SWITCH</text>
 <text x="331.0" y="79.5" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">Control Module</text>
-<text x="331.0" y="92.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">IRF9540N P-MOSFET load switch</text>
+<text x="331.0" y="92.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">IRF4905S P-MOSFET load switch</text>
 <text x="331.0" y="104.5" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">analog RC hold-to-off timing</text>
 <text x="331.0" y="117.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">no Teensy pin (master cannot see it)</text>
 <rect x="436.0" y="50.0" width="204.0" height="74.0" rx="5" fill="#ffffff" stroke="#263238" stroke-width="1.4"/>
@@ -37,7 +37,7 @@
 <rect x="256.0" y="144.0" width="150.0" height="50.0" rx="5" fill="#ffffff" stroke="#263238" stroke-width="1.4"/>
 <text x="331.0" y="160.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#263238">POWER BUTTON (A1)</text>
 <text x="331.0" y="173.5" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">momentary, to Ctrl Module H1</text>
-<text x="331.0" y="186.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">short press ON · hold 3 s OFF</text>
+<text x="331.0" y="186.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">short press ON · hold 3–4 s OFF</text>
 <polyline points="331.0,144.0 331.0,125.0" fill="none" stroke="#c62828" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#ahr)"/>
 <rect x="458.0" y="144.0" width="182.0" height="62.0" rx="5" fill="#fffde7" stroke="#f9a825" stroke-width="1.4"/>
 <text x="549.0" y="160.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#263238">SUPPLY LIMITS (INA228)</text>
