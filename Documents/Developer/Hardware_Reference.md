@@ -300,7 +300,7 @@ Both switch groups are on Wide Button Modules. Each switch closes from a +5 V te
 
 | Board | Schematic | PCB | Rev | Used on | Function |
 |-------|-----------|-----|-----|---------|----------|
-| Panel Hub | KC-01-1731 | KC-01-1732 | V2.1 | A2, B2 | Input-panel hub: CN1 34-pin panel connector (8 lines), 8 module slots P1–P8 (16-pin), one safe-switch terminal (U4). Local MPM3610 (5V) + AP2112K (3.3V) for the slots' V_3P3 pin and the safe-switch circuit |
+| Panel Hub | KC-01-1731 | KC-01-1732 | V2.1 | A2, B2 | Input-panel hub: CN1 34-pin panel connector (8 lines), 8 module slots P1–P8 (16-pin), one safe-switch terminal (U4). Local MPM3610 (5V) + AP2112K (3.3V) for the slots' V_3P3 pin and the safe-switch circuit; 10 kΩ bleeder R5 on V_3P3 (drawings Rev B) |
 | 7" TFT Display Driver (as hub) | KC-01-1911 | KC-01-1912 | V2.1 | A1 (Info Display 1), B1 (Resource Display) | A 7" display (§5.3) that also acts as its panel's hub: CN1 34-pin panel connector (4 lines), 3 module slots P2–P4 (16-pin), one safe-switch terminal |
 
 **Retired:** Display Hub (KC-01-1721 / 1722). Its job is done by the 7" TFT Display Driver.
